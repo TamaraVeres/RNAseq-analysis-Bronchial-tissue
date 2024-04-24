@@ -1,0 +1,659 @@
+---
+title: "IEO Project template"
+author:
+- name: "Robert Castelo"
+  affiliation: Universitat Pompeu Fabra
+  email: robert.castelo@upf.edu
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    fig_captions: yes
+bibliography: bibliography.bib
+vignette: >
+  %\VignetteIndexEntry{IEOprojectAnalysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!--
+In this first chunk of code, which will not be shown in the resulting
+document (echo=FALSE) sets up global processing options, such as whether
+a comment character should appear before code results (set to the null
+character string in this case), collapse source and output blocks into
+a single code block (collapse=TRUE), align figures to the center
+(fig.align="center") or cache the results to speed up vignette building
+(cache=FALSE thus disabled in this case). A full description of possible
+options can be found at http://yihui.name/knitr/options
+--->
+
+```{r setup, echo=FALSE, cache=FALSE}
+library(knitr) ## kable()
+library(kableExtra) ## kable_styling(), save_kable()
+library(here) ## here()
+library(usethis) ## use_directory()
+
+knitr::opts_chunk$set(
+  collapse=TRUE,
+  comment="",
+  fig.align="center",
+  fig.wide=TRUE,
+  cache=FALSE
+)
+
+## this option avoid use_directory() being verbose
+options(usethis.quiet=TRUE)
+
+## create these paths at build time if they do not exist
+use_directory(file.path("doc"))
+use_directory(file.path("inst", "doc"))
+
+## fetch the package root directory
+path2pkg <- here()
+```
+
+# Introduction
+
+The severe acute respiratory syndrome-related coronavirus 2 (SARS-CoV-2)
+is a highly pathogenic human zoonotic
+[coronavirus](https://en.wikipedia.org/wiki/Coronavirus), which causes
+Coronavirus disease 2019 (COVID-19). In an effort to understand the host
+transcriptional response to the SARS-Cov-2 virus, @blancomelo20 sequenced the
+transcriptome of two different human cell lines, human alveolar adenocarcinoma
+cells (A549) and primary human bronchial epithelial (NHBE) cells, after
+infecting them with SARS-Cov-2, seasonal influenza A virus (IAV) and human
+respiratory syncytial virus (RSV), and growing them in the same culture
+conditions without infection (mock).
+
+The resulting raw RNA-seq data have been deposited at the Gene Expression
+Omnibus (GEO), where they are publicly available under accession
+[GSE147507](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE147507).
+Here, we show a first exploratory analysis of the corresponding RNA-seq gene
+expression profiles generated as a table of counts using the DEE2
+(https://dee2.io) pipeline by @ziemann19, and further packaged into a
+[SummarizedExperiment](https://bioconductor.org/packages/SummarizedExperiment)
+object with genes mapped to Entrez identifiers. This object also stores
+the phenotypic information about the profiled samples that has been also
+made available at GEO.
+
+The directories in this package template follow the structure of an R package
+(consult this [link](http://r-pkgs.had.co.nz) for further information) adapted
+for the purpose of data analysis:
+
+  * R: functions to avoid repeating steps and store auxiliary code,
+  used in the vignette.
+  
+  * vignettes: Rmarkdown document of the data analysis.
+  
+  * inst/extdata: repository of the data to be analyzed and any other
+  kind of additional functional and annotation data employed during
+  the analysis and which is unavailable through an R package. This
+  directory is moved to the package root directory at install.
+  
+  * inst/doc: repository for the results of the analysis that we
+  want to provide without having to run the entire analysis again, e.g.,
+  tables of differentially expressed genes. This directory is moved
+  to the package root directory at install, where also the vignettes
+  are installed.
+  
+  * man: manual pages of functions defined in the R directory that
+  for some reason we want to export from the package.
+  
+Every other directory you see in this package has been automatically
+generated in the package building process as, for instance, the `doc`
+directory with the result of the vignette.
+
+When you edit and adapt this vignette for your own data analysis project,
+you should do it in the `.Rmd` file of the `vignettes` directory
+(**not** the one copied to the `doc` directory because this one is overwritten
+during package building and if you edit there **you will loose your edits**).
+To build this vignette without building the entire package, you should type
+the following in the R shell:
+
+```{r, eval=FALSE}
+devtools::build_vignettes()
+```
+
+This function call will build your vignette and copy the resulting HTML to
+the `doc` directory. Thus, to see the result, you should go there and open
+that HTML file.
+
+The rest of the documentation of this package is provided within the files
+of the R directory using
+[roxygen2](https://cran.r-project.org/web/packages/roxygen2/vignettes/roxygen2.html),
+which means that before you build the entire package you have to generate the
+documentation and `NAMESPACE` file typing in the R shell:
+
+```{r, eval=FALSE}
+devtools::document()
+```
+
+Both steps, calling `devtools::build_vignettes()` and `devtools::document()`
+have to be done from the root directory of your package.
+
+**IMPORTANT**: This package template is just an example to facilitate getting
+started with R-markdown, illustrate the encapsulation of a data analysis into
+an R package and provide an example of a possible structure of the data analysis
+for the the project. You do *not* have to do the analysis of your dataset
+exactly in the same way as it is done here. Please read carefully the
+description of the project, and its technical requirements to know what you are
+expected to do. In particular, when you carry out the second part of the
+project, you should conduct the differential expression analysis in the way that
+best suits the questions you want to address. You do not need to do the analysis
+in every possible way, just in one way, in the way you think it makes more sense
+to you.
+
+IF YOU THINK AN ANALYSIS OR A DIAGNOSTIC OR A VISUALIZATION
+DOES NOT MAKE SENSE, OR IT IS NOT JUSTIFIED, **YOU SHOULD NOT DO IT**.
+
+# Quality assessment
+
+## Data import and cleaning
+
+We start importing the raw table of counts.
+
+<!--
+The option 'message=FALSE' avoid dumping R messages such as "Loading required package: methods"
+into the output of the report.
+-->
+
+```{r, message=FALSE}
+library(SummarizedExperiment)
+
+se <- readRDS(file.path(system.file("extdata",
+                                    package="IEOproject"),
+                        "GSE147507.rds"))
+se
+```
+
+We have `r nrow(se)` genes by `r ncol(se)` samples. From the first row
+and column names shown by the object, we can figure out that genes are
+defined by [Entrez](https://www.ncbi.nlm.nih.gov/gene) [@maglott10]
+identifiers and samples by Sequence Read Archive Run
+([SRR](https://www.ncbi.nlm.nih.gov/books/NBK56913/#search.what_do_the_different_sra_accessi)) identifiers.
+
+The row data in this object contains information about the profiled genes.
+
+```{r}
+head(rowData(se))
+```
+Among this information, the gene symbol and description are potentially
+useful for interpreting results of, for instance, a differential
+expression analysis. Let's explore now the column (phenotypic) data.
+
+```{r}
+dim(colData(se))
+head(colData(se), n=3)
+```
+
+We have a total of `r ncol(colData(se))` phenotypic variables. The
+second column `geo_accession` contains GEO Sample Accession Number
+([GSM](https://www.ncbi.nlm.nih.gov/geo/info/overview.html)) identifers.
+GSM identifiers define individual samples, understood in our context as
+individual sources of RNA. We can see these are repeated, indicating
+that among the `ncol(se)` samples we have technical replicates. We can
+figure out how many technical replicates per GSM sample we have as
+follows:
+
+```{r}
+length(unique(se$geo_accession))
+table(lengths(split(colnames(se), se$geo_accession)))
+```
+
+So, we have `r length(unique(se$geo_accession))` different individual
+samples and for each of them, we have
+`r names(table(lengths(split(colnames(se), se$geo_accession))))`
+technical replicates. We proceed now to add up the counts of the
+tecnical replicates per sample. For this purpose, we use the function
+`add_tech_rep()` defined in this package.
+
+```{r, message=FALSE}
+library(IEOproject)
+
+se <- add_tech_rep(se, se$geo_accession)
+se
+```
+
+To proceed further exploring this dataset, we are going to use the
+[edgeR](https://bioconductor.org/packages/edgeR) package and build
+a `DGEList` object, incorporating the gene metadata, which includes
+the gene symbol.
+
+```{r, message=FALSE}
+library(edgeR)
+
+dge <- DGEList(counts=assays(se)$counts, genes=rowData(se))
+dim(dge)
+```
+Calculate $\log_2$ CPM units of expression and put them as an
+additional assay element to ease their manipulation.
+
+```{r}
+assays(se)$logCPM <- cpm(dge, log=TRUE)
+assays(se)$logCPM[1:5, 1:5]
+```
+
+Let's explore now some of the phenotypic variables. Unfortunately,
+we do not have rich metadata that tells us what precise information
+is stored in each variable. However, after some visual inspection,
+we would find out that the variables `characteristics_ch1` and
+`characteristics_ch1.2` contain the information about cell line and
+treatment.
+
+```{r}
+table(se$characteristics_ch1)
+table(se$characteristics_ch1.2)
+```
+To facilitate handling these variables we are going to recode them
+as follows.
+
+```{r}
+se$cell_line <- se$characteristics_ch1
+levels(se$cell_line) <- c("A549", "NHBE")
+se$treatment <- se$characteristics_ch1.2
+tmplevels <- gsub(" treatment", "", gsub("treatment: ", "", levels(se$treatment)))
+tmplevels <- gsub(" infected ", "", tmplevels)
+tmplevels <- gsub("\\(MOI ", "MOI", gsub(")", "", gsub("-", "", tmplevels)))
+levels(se$treatment) <- tmplevels
+```
+We can also identify some variables associated with technical factors,
+such as the sample preparation protocol in `extract_protocol_ch1`.
+
+```{r}
+table(se$extract_protocol_ch1)
+```
+Finally, we also observe that the variable `description` contains some
+relevant information about an apparent sub-grouping of the samples,
+within cell lines.
+
+```{r}
+se$description
+```
+In Table \@ref(tab:pheno) below, we show this variable jointly with
+cell line and treatment to try to gather as much understanding as
+possible on the underlying experimental design.
+
+```{r pheno, echo=FALSE, message=FALSE}
+tmpdf <- data.frame("Identifer"=colnames(se),
+                    "Cell line"=se$cell_line,
+                    Treatment=se$treatment,
+                    Replicate=se$description,
+                    check.names=FALSE)
+ktab <- kable(tmpdf, caption="Phenotypic variables.")
+kable_styling(ktab, position="center")
+```
+
+This table reflects the comments in variable `data_processing.2`, which
+says "`r as.character(se$data_processing.2[1])`". In other words, infected
+samples should be compared with their _corresponding_ mock samples. We
+can generate such a grouping variable with some more informative levels,
+as follows.
+
+```{r}
+se$samplegroup <- factor(sapply(strsplit(as.character(se$description),
+                                         "-"), function(x) x[1]))
+levels(se$samplegroup) <- c("IAVA549", "COV2A549", "COV2NHBE", "RSVA549")
+table(se$samplegroup)
+```
+
+## Sequencing depth
+
+Let's examine the sequencing depth in terms of total number of sequence
+read counts mapped to the genome per sample. Figure \@ref(fig:libsizes) below
+shows the sequencing depth per sample, also known as library sizes, in
+increasing order.
+
+<!---
+you can control the height and width in pixels of the figure with
+'out.height' and 'out.width'. Figures are automatically numbered,
+to refer to them in the main text you should use the notation shown
+above as \@ref(fig:xxxx) with xxxx being the label in the code chunk
+that also gives the filename of the figure. This name must be unique
+--->
+
+```{r libsizes, echo=FALSE, height=8, width=8, out.width="600px", fig.cap="Library sizes in increasing order."}
+par(mar=c(7, 5, 2, 2))
+ord <- order(dge$sample$lib.size/1e6)
+ordmreads <- dge$sample$lib.size[ord]/1e6
+names(ordmreads) <- colnames(se)[ord]
+bp <- barplot(ordmreads, las=1, ylab="Millions of reads",
+              xlab="", col=as.integer(se$samplegroup[ord]), las=2)
+mockmask <- se$treatment[ord] == "Mock"
+text(bp[mockmask, 1], dge$sample$lib.size[ord][mockmask]/1e6, "M", pos=3)
+legend("topleft", c(levels(se$samplegroup), "Mock"), inset=0.05,
+       pch=c(rep(15, nlevels(se$samplegroup)), 77), ## 77 is ASCII for M
+       col=c(seq_len(nlevels(se$samplegroup)), "black"))
+```
+We see substantial differences in sequencing depth, ranging from
+`r round(min(dge$sample$lib.size/1e6), digits=0)` to
+`r round(max(dge$sample$lib.size/1e6), digits=0)` million reads.
+Except for the IAV-A549 samples, which seem to have been all
+sequenced at a lower depth than the rest (< 10M), the other sample
+groups are not confounded with sequencing depth. Within sample groups,
+the RSV-549 mock samples were sequenced at a substantially higher
+depth than the RSV-infected ones.
+
+## Distribution of expression levels among samples
+
+Figure \@ref(fig:distRawExp) below shows the distribution of expression
+values per sample in logarithmic CPM units of expression.
+
+<!---
+the option echo=FALSE hides the R code. When plotting in general one
+does not want to see the code. Options fig.height and fig.width control
+height and width of the plot in inches while out.height and out.width
+do it in the final output file; see http://yihui.name/knitr/options for
+full details.
+--->
+
+```{r distRawExp, echo=FALSE, fig.height=5, fig.width=5, out.width="600px", fig.cap="Non-parametric density distribution of expression profiles per sample.", message=FALSE}
+library(geneplotter)
+par(mar=c(4, 5, 1, 1))
+lst <- as.list(as.data.frame(assays(se)$logCPM))
+multidensity(lst, xlab="log 2 CPM", legend=NULL,
+             main="", las=1)
+```
+There are no substantial differences between the samples in the
+distribution of expression values.
+
+## Distribution of expression levels among genes
+
+Let's calculate now the average expression per gene through all the
+samples. Figure \@ref(fig:exprdist) shows the distribution of those
+values across genes.
+
+```{r exprdist, echo=FALSE, out.width="600px", fig.cap="Distribution of average expression level per gene."}
+avgexp <- rowMeans(assays(se)$logCPM)
+hist(avgexp, xlab="log2 CPM", main="", las=1)
+```
+As expected, we have two modes, one for genes that are lowly expressed
+in nearly all samples and another for genes with some detectable levels
+of expression across a number of samples.
+
+## Filtering of lowly-expressed genes
+
+We filter lowly-expressed genes using the function `filterByExpr()`,
+grouping by sample-group to define the minimum number of samples in
+which a gene should be expressed.
+
+```{r}
+mask <- filterByExpr(dge, group=se$samplegroup)
+se.filt <- se[mask, ]
+dim(se.filt)
+dge.filt <- dge[mask, ]
+dim(dge.filt)
+```
+We are left with `r nrow(se.filt)` genes.
+
+## Normalization
+
+We calculate now the normalization factors on the filtered expression
+data set.
+
+```{r}
+dge.filt <- calcNormFactors(dge.filt)
+```
+
+Replace the raw log2 CPM units in the corresponding assay element of
+the `SummarizedExperiment` object, by the normalized ones.
+
+```{r}
+assays(se.filt)$logCPM <- cpm(dge.filt, log=TRUE,
+                              normalized.lib.sizes=TRUE)
+```
+
+## MA-plots
+
+We examine now the MA-plots of the normalized expression profiles
+in Figure \@ref(fig:maPlots).
+
+<!---
+Here we make a MA-plot for each sample. The options 'fig.height'
+and 'fig.width' control the relative image size in *inches*. The
+final image size results from 'height'x'dpi' and 'width'x'dpi',
+where 'dpi' is the image resolution in "dots per inch" (by default
+dpi=72). To scale the image to a desired size use 'out.width' and
+'out.height'. More information at http://yihui.name/knitr/options
+--->
+```{r maPlots, fig.height=18, fig.width=10, dpi=100, echo=FALSE, fig.cap="MA-plots of filtered and normalized expression values."}
+par(mfrow=c(5, 4), mar=c(4, 5, 3, 1))
+for (i in 1:ncol(se.filt)) {
+  A <- rowMeans(assays(se.filt)$logCPM)
+  M <- assays(se.filt)$logCPM[, i] - A
+  smoothScatter(A, M, main=colnames(se.filt)[i], las=1)
+  abline(h=0, col="blue", lwd=2)
+  lo <- lowess(M ~ A)
+  lines(lo$x, lo$y, col="red", lwd=2)
+}
+```
+A number of samples display some expression-level dependent bias.
+For cases in which this occurs at the low-end of the expression level,
+one solution could be to have a more stringent filter on minimum
+expression (using a grouping with more samples per group, for instance).
+We should keep an eye on samples with these biases in case they also
+display other unexpected features, because then we might consider
+removing them.
+
+## Experimental design and batch identification
+
+Here try to understand the underlying experimental design. Let's
+start examining the distribution of samples across the combination
+of cell line and treatment.
+
+```{r}
+table(se.filt$cell_line, se.filt$treatment)
+```
+
+We can see that not all combinations of cell line and treatment have
+been sequenced. For this reason, we can anticipate that it won't be
+possible to identify expression changes associated with all levels
+of these two factors. We will have to make comparisons
+within each cell line, between those treatments that have been
+sequenced.
+
+Now, let's look at the combination of sample preparation protocol
+and cell line.
+
+```{r}
+table(se.filt$extract_protocol_ch1, se$cell_line)
+```
+
+We can see that there is a perfect correlation between sample preparation
+protocol and cell line because the two cell lines were processed with
+different sample preparation protocols. This means that differences
+between NHBE and A549 samples are not going to be only due to biological
+differences but also technical.
+
+We examine now how samples group together by hierarchical clustering
+and multidimensional scaling, annotating sample group and treatment. We
+calculate again log CPM values with a high prior count(3) to moderate extreme
+fold-changes produced by low counts. The resulting dendrogram is shown in
+Figure \@ref(fig:sampleClustering).
+
+```{r sampleClustering, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S6: Hierarchical clustering of the samples. Labels correspond to treatment and sample identifer, while colors indicate sample group."}
+logCPM <- cpm(dge.filt, log=TRUE, prior.count=3)
+d <- as.dist(1-cor(logCPM, method="spearman"))
+sampleClustering <- hclust(d)
+batch <- as.integer(se.filt$samplegroup)
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$treatment, colnames(se), sep="\n")
+names(outcome) <- colnames(se.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+                               function(x, batch, labels) {
+                                 if (is.leaf(x)) {
+                                   attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x, "label")]))
+                                   attr(x, "label") <- as.vector(labels[attr(x, "label")])
+                                 }
+                                 x
+                               }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples",
+     cex=0.7)
+legend("topright", levels(se.filt$samplegroup),
+       fill=seq_len(nlevels(se.filt$samplegroup)))
+```
+
+As expected, NHBE cell line samples cluster separately from A549 samples
+and cell line seems to drive the largest portion of the variablity in
+the whole dataset. Next to this observation, all samples cluster by
+sample group, except one of the IAV-infected cells. Looking up its
+identifier, it does not correspond to the sample of lowest sequencing
+depth and therefore, there's probably other reason than depth to cluster
+away from its group. In Figure \@ref(fig:mdsPlot) we show the
+corresponding MDS plot.
+
+```{r mdsPlot, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S7: Multidimensional scaling plot of the samples. Labels correspond to treatment and colors indicate sample group."}
+outcome <- se.filt$treatment
+names(outcome) <- colnames(se.filt)
+plotMDS(dge.filt, labels=outcome, col=batch)
+legend("bottomleft", levels(se.filt$samplegroup),
+       fill=seq_len(nlevels(se.filt$samplegroup)), inset=0.05)
+```
+
+The MDS plot shows even more clear differences between A549 and NHBE samples and
+suggests clearly that samples group by the type of infection. As described by
+@blancomelo20, mock-treated samples were cultured to match the conditions of
+the corresponding infected samples. For this reason, in this dataset it only
+makes sense to compare infected with mock samples within their corresponding
+cultured group.
+
+# Differential expression
+
+We perform a simple assessment of the extent of expression changes and their
+associated p-values using the F-test implemented in the R/Bioconductor package
+[sva](http://bioconductor.org/packages/sva). We compare mock with SARS-Cov-2
+infected samples in the NHBE cell line. We first subset the data as follows:
+
+```{r}
+se.filt.COV2NHBE <- se.filt[, se.filt$samplegroup == "COV2NHBE"]
+se.filt.COV2NHBE$treatment <- droplevels(se.filt.COV2NHBE$treatment)
+```
+In the second step above, we dropped the unused levels from the treatment
+factor variable. This is important to avoid using factor levels that do not
+exist in this subset of the data. We build now the corresponding full and null
+model matrices.
+
+```{r}
+mod <- model.matrix(~ se.filt.COV2NHBE$treatment,
+                    colData(se.filt.COV2NHBE))
+mod0 <- model.matrix(~ 1, colData(se.filt.COV2NHBE))
+```
+Finally, we conduct the F-test implemented in the package `sva` and
+examine the amount of differential expression between SARS-Cov-2
+infected and mock cells.
+
+```{r, message=FALSE}
+library(sva)
+
+pv <- f.pvalue(assays(se.filt.COV2NHBE)$logCPM, mod, mod0)
+sum(p.adjust(pv, method="fdr") < 0.05)
+sum(p.adjust(pv, method="fdr") < 0.1)
+```
+
+We obtain `r sum(p.adjust(pv, method="fdr") < 0.05)` differentially
+expressed (DE) genes at FDR < 5% and
+`r sum(p.adjust(pv, method="fdr") < 0.1)` at FDR < 10%. In Figure
+\@ref(fig:pdistCOV2NHBE) below we can see the distribution of the
+resulting p-values.
+
+```{r pdistCOV2NHBE, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between SARS-Cov-2 infected and mock samples in NHBE cell lines."}
+hist(pv, main="", las=1)
+```
+
+We build a table with the subset of `r sum(p.adjust(pv, method="fdr") < 0.1)`
+DE genes with FDR < 10% and show the top-10 genes with lowest p-value in
+Table \@ref(tab:DEgenesSARScov2NHBE) below.
+
+```{r, message=FALSE}
+mask <- p.adjust(pv, method="fdr") < 0.1
+DEgenesEGs <- names(pv)[mask]
+DEgenesSyms <- mcols(se.filt)[DEgenesEGs, "symbol"]
+DEgenesPvalue <- pv[mask]
+DEgenesDesc <- mcols(se.filt)[DEgenesEGs, "description"]
+DEgenesDesc <- sub(" \\[.+\\]", "", DEgenesDesc)
+DEgenesTab <- data.frame(EntrezID=DEgenesEGs,
+                         Symbol=DEgenesSyms,
+                         Description=DEgenesDesc,
+                         "P value"=DEgenesPvalue,
+                         stringsAsFactors=FALSE, check.names=FALSE)
+DEgenesTab <- DEgenesTab[order(DEgenesTab[["P value"]]), ] ## order by p-value
+rownames(DEgenesTab) <- 1:nrow(DEgenesTab)
+```
+
+<!--
+The following code chunk is hidden because its lines are not that relevant
+to the analysis of the data. Their purpose is to dump the table of DE genes
+into an HTML table and a CSV file to facilitate the examination of long lists
+of DE genes while avoiding to produce a lengthy vignette by showing only the
+top-10 DE genes.
+--->
+
+```{r, echo=FALSE}
+## generate full table in a CSV file and store it in the 'doc' directory
+## twice, once in 'doc' to enable quickly look up during vignette editing
+## and building with 'devtools::build_vignettes()' and a second time in
+## 'inst/doc' to make these files available at install.
+fnameCSV <- "DEgenesSARScov2NHBE.csv"
+fpathCSV <- file.path(path2pkg, "doc", fnameCSV)
+write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
+fpathCSV <- file.path(path2pkg, "inst", "doc", fnameCSV)
+write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
+
+## generate full table in HTML and store it into the 'doc' directory
+## twice, just as we did with the CSV file. note that because the
+## table caption is not translated from Markdown, but directly copied
+## into HTML, we need to avoid using the '<' symbol, as in FDR < 10%,
+## and put its HTML code instead (&lt;)
+ktab <- kable(DEgenesTab, "html", escape=FALSE, row.names=TRUE,
+              caption=sprintf("Differentially expressed genes. Differentially expressed genes between SARS-Cov-2 infected and mock NHBE cells with FDR &lt; 10%% (CSV <a href=\"%s\" download>file</a>).",
+                              fnameCSV))
+ktab <- kable_styling(ktab,
+                      bootstrap_options=c("stripped", "hover", "responsive"),
+                      fixed_thead=TRUE)
+fnameHTML <- "DEgenesSARScov2NHBE.html"
+fpathHTML <- file.path(path2pkg, "doc", fnameHTML)
+save_kable(ktab, file=fpathHTML, self_contained=TRUE)
+fpathHTML <- file.path(path2pkg, "inst", "doc", fnameHTML)
+save_kable(ktab, file=fpathHTML, self_contained=TRUE)
+```
+
+<!--
+The following code chunk is also hidden because its purpose is to produce
+a short HTML table of the top-10 DE genes. The reason show here only the
+top-10 genes is to producing a long vignette. The full HTML table and the
+corresponding CSV file are linked through the caption of this short HTML
+table.
+
+note that because the table caption is not translated from Markdown, but
+directly copied into HTML, we need to avoid using the '<' symbol, as in
+FDR < 10%, and put its HTML code instead (&lt;)
+--->
+
+```{r DEgenesSARScov2NHBE, echo=FALSE}
+ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE, 
+              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between SARS-Cov-2 infected and mock NHBE cells with FDR &lt; 10%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
+                              fnameHTML, fnameCSV))
+kable_styling(ktab, position="center")
+```
+
+# Functional analysis
+
+Here we will do the functional analysis.
+
+# Discussion
+
+Here we discuss the findings.
+
+# Conclusions
+
+Here we summarize our conclusions.
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# References
