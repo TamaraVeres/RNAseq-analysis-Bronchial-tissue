@@ -2,7 +2,7 @@ Package: IEOproject
 Type: Package
 Title: IEO Project Template
 Version: 1.2.4
-Author: Robert Castelo
+Author: Radostina Kisleva, Tamara-Dora Veres, Emma Juan Salazar
 Maintainer: Robert Castelo <robert.castelo@upf.edu>
 Description: Provide the IEO project template.
 License: Artistic-2.0

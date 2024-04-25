@@ -164,7 +164,7 @@ library(SummarizedExperiment)
 
 se <- readRDS(file.path(system.file("extdata",
                                     package="IEOproject"),
-                        "GSE147507.rds"))
+                        "GSE79209.rds"))
 se
 ```
 
@@ -192,10 +192,8 @@ We have a total of `r ncol(colData(se))` phenotypic variables. The
 second column `geo_accession` contains GEO Sample Accession Number
 ([GSM](https://www.ncbi.nlm.nih.gov/geo/info/overview.html)) identifers.
 GSM identifiers define individual samples, understood in our context as
-individual sources of RNA. We can see these are repeated, indicating
-that among the `ncol(se)` samples we have technical replicates. We can
-figure out how many technical replicates per GSM sample we have as
-follows:
+individual sources of RNA. We can check if we have any technical replicates
+as follows:
 
 ```{r}
 length(unique(se$geo_accession))
@@ -203,18 +201,9 @@ table(lengths(split(colnames(se), se$geo_accession)))
 ```
 
 So, we have `r length(unique(se$geo_accession))` different individual
-samples and for each of them, we have
-`r names(table(lengths(split(colnames(se), se$geo_accession))))`
-technical replicates. We proceed now to add up the counts of the
-tecnical replicates per sample. For this purpose, we use the function
-`add_tech_rep()` defined in this package.
-
-```{r, message=FALSE}
-library(IEOproject)
-
-se <- add_tech_rep(se, se$geo_accession)
-se
-```
+samples which matches the number of samples that we have `r ncol(se)`.
+Therefore we don't have any technical replicates and we can proceed wit
+the next step.
 
 To proceed further exploring this dataset, we are going to use the
 [edgeR](https://bioconductor.org/packages/edgeR) package and build
@@ -225,14 +214,30 @@ the gene symbol.
 library(edgeR)
 
 dge <- DGEList(counts=assays(se)$counts, genes=rowData(se))
+head(dge$samples, 3)
 dim(dge)
 ```
 Calculate $\log_2$ CPM units of expression and put them as an
-additional assay element to ease their manipulation.
+additional assay element to ease their manipulation. This provides a
+standarized and normalized representation of gene expression data.
 
 ```{r}
 assays(se)$logCPM <- cpm(dge, log=TRUE)
 assays(se)$logCPM[1:5, 1:5]
+```
+
+Possible columns we could use for the next step:
+
+```{r}
+table(se$characteristics_ch1.1) # age or table(se$age.ch1)
+table(se$characteristics_ch1.2) # sex or table(se$Sex.ch1)
+table(se$characteristics_ch1.3) # smoking status (current - former) or table(se$smoking.status.ch1)
+table(se$characteristics_ch1.4) # pack-years (how many cigarettes you have smoked in your lifetime 1 pack = 20 ciggs) or table(se$pack.years.ch1)
+table(se$characteristics_ch1.5) # copd status or table(se$copd.status.ch1)
+table(se$characteristics_ch1.6) # max histology - hyperplasia, metaplasia, mild dysplasia, moderate dysplasia, normal and severe dysplasia or table(se$max.histology.ch1)
+table(se$characteristics_ch1.7) # dysplasia status - dysplasia, NA, normal or table(se$dysplasia.status.ch1)
+table(se$age.ch1) # mean gc content or table(se$mean.gc.content.ch1)
+
 ```
 
 Let's explore now some of the phenotypic variables. Unfortunately,
