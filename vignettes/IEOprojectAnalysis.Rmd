@@ -52,6 +52,7 @@ use_directory(file.path("inst", "doc"))
 
 ## fetch the package root directory
 path2pkg <- here()
+
 ```
 
 # Introduction
@@ -166,6 +167,7 @@ se <- readRDS(file.path(system.file("extdata",
                                     package="IEOproject"),
                         "GSE79209.rds"))
 se
+
 ```
 
 We have `r nrow(se)` genes by `r ncol(se)` samples. From the first row
@@ -229,6 +231,8 @@ assays(se)$logCPM[1:5, 1:5]
 Possible columns we could use for the next step:
 
 ```{r}
+# Delete this at the end 
+
 table(se$characteristics_ch1.1) # age or table(se$age.ch1)
 table(se$characteristics_ch1.2) # sex or table(se$Sex.ch1)
 table(se$characteristics_ch1.3) # smoking status (current - former) or table(se$smoking.status.ch1)
@@ -238,69 +242,85 @@ table(se$characteristics_ch1.6) # max histology - hyperplasia, metaplasia, mild 
 table(se$characteristics_ch1.7) # dysplasia status - dysplasia, NA, normal or table(se$dysplasia.status.ch1)
 table(se$age.ch1) # mean gc content or table(se$mean.gc.content.ch1)
 
+# Delete this at the end
 ```
 
-Let's explore now some of the phenotypic variables. Unfortunately,
-we do not have rich metadata that tells us what precise information
-is stored in each variable. However, after some visual inspection,
-we would find out that the variables `characteristics_ch1` and
-`characteristics_ch1.2` contain the information about cell line and
-treatment.
-
-```{r}
-table(se$characteristics_ch1)
-table(se$characteristics_ch1.2)
-```
-To facilitate handling these variables we are going to recode them
-as follows.
+Let's explore now some of the phenotypic variables. After some visual inspection
+of the variables, we find out that the variable `se$characteristics_ch1.4` contains
+information about how many cigarettes a person has smoked in their lifetime.
+We also have a variable which tells us whether the person has COPD 
+(Chronic obstructive pulmonary disease) or not `se$characteristics_ch1.5`.
 
 ```{r}
-se$cell_line <- se$characteristics_ch1
-levels(se$cell_line) <- c("A549", "NHBE")
-se$treatment <- se$characteristics_ch1.2
-tmplevels <- gsub(" treatment", "", gsub("treatment: ", "", levels(se$treatment)))
-tmplevels <- gsub(" infected ", "", tmplevels)
-tmplevels <- gsub("\\(MOI ", "MOI", gsub(")", "", gsub("-", "", tmplevels)))
-levels(se$treatment) <- tmplevels
+table(se$characteristics_ch1.4)
+table(se$characteristics_ch1.5)
 ```
-We can also identify some variables associated with technical factors,
-such as the sample preparation protocol in `extract_protocol_ch1`.
+
+Another variable of interest could be max histology `se$characteristics_ch1.6` which 
+represents the different histology types (tissue characteristics).
 
 ```{r}
-table(se$extract_protocol_ch1)
+table(se$characteristics_ch1.6)
 ```
-Finally, we also observe that the variable `description` contains some
-relevant information about an apparent sub-grouping of the samples,
-within cell lines.
+
+To facilitate handling this variables we are going to perform the following
+modifications:
 
 ```{r}
-se$description
+se$copd_status <- gsub("copd status: ", "", se$characteristics_ch1.5)
+se$copd_status <- factor(se$copd_status, levels = c("COPD", "No COPD"))
+
+se$histology <- gsub("max histology: ", "", se$characteristics_ch1.6)
+se$histology <- factor(se$histology, levels(se$histology) <- c("Hyperplasia", "Metaplasia", "Mild dysplasia", "Moderate dysplasia", "Normal", "Severe dysplasia"))
 ```
-In Table \@ref(tab:pheno) below, we show this variable jointly with
-cell line and treatment to try to gather as much understanding as
+
+To faciliate working with the pack years variable will split it into four 
+categorical groups - Low, Medium, High and Very high. 
+
+To do that we will:
+1. Calculate quartiles for the data.
+2. Assign categories based on quartile ranges.
+3. Convert the values into their corresponding categories.
+
+
+```{r}
+se$characteristics_ch1.4 <- gsub("pack years: ", "", se$characteristics_ch1.4)
+class(se$characteristics_ch1.4)
+se$characteristics_ch1.4 <- as.numeric(se$characteristics_ch1.4)
+
+quartiles <- quantile(se$characteristics_ch1.4, probs = c(0.25, 0.5, 0.75))
+
+```
+
+Now that we have the quartiles, we can proceed to assign categories to the values based on these quartiles.
+
+Values below the first quartile (Q1) will be categorized as "low."
+Values between Q1 and the median (Q2) will be categorized as "medium."
+Values between the median (Q2) and the third quartile (Q3) will be categorized as "high."
+Values above the third quartile (Q3) will be categorized as "very high."
+
+
+```{r}
+
+se$pack_years <- cut(se$characteristics_ch1.4,
+                          breaks = c(-Inf, quartiles[1], quartiles[2], quartiles[3], Inf),
+                          labels = c("Low", "Medium", "High", "Very High"),
+                          include.lowest = TRUE)
+
+```
+
+In Table \@ref(tab:pheno) below, we show the three variables of interest
+(histology, COPD status and pack years) jointly to gather as much understanding as
 possible on the underlying experimental design.
 
 ```{r pheno, echo=FALSE, message=FALSE}
 tmpdf <- data.frame("Identifer"=colnames(se),
-                    "Cell line"=se$cell_line,
-                    Treatment=se$treatment,
-                    Replicate=se$description,
+                    "Pack Years"=se$pack_years,
+                    Histology=se$histology,
+                    "COPD Status"=se$copd_status,
                     check.names=FALSE)
 ktab <- kable(tmpdf, caption="Phenotypic variables.")
 kable_styling(ktab, position="center")
-```
-
-This table reflects the comments in variable `data_processing.2`, which
-says "`r as.character(se$data_processing.2[1])`". In other words, infected
-samples should be compared with their _corresponding_ mock samples. We
-can generate such a grouping variable with some more informative levels,
-as follows.
-
-```{r}
-se$samplegroup <- factor(sapply(strsplit(as.character(se$description),
-                                         "-"), function(x) x[1]))
-levels(se$samplegroup) <- c("IAVA549", "COV2A549", "COV2NHBE", "RSVA549")
-table(se$samplegroup)
 ```
 
 ## Sequencing depth
@@ -324,21 +344,10 @@ ord <- order(dge$sample$lib.size/1e6)
 ordmreads <- dge$sample$lib.size[ord]/1e6
 names(ordmreads) <- colnames(se)[ord]
 bp <- barplot(ordmreads, las=1, ylab="Millions of reads",
-              xlab="", col=as.integer(se$samplegroup[ord]), las=2)
-mockmask <- se$treatment[ord] == "Mock"
-text(bp[mockmask, 1], dge$sample$lib.size[ord][mockmask]/1e6, "M", pos=3)
-legend("topleft", c(levels(se$samplegroup), "Mock"), inset=0.05,
-       pch=c(rep(15, nlevels(se$samplegroup)), 77), ## 77 is ASCII for M
-       col=c(seq_len(nlevels(se$samplegroup)), "black"))
+              xlab="", col=c("blue", "green", "red", "purple", "orange", "pink")[factor(se$histology[ord])], las=2, ylim = c(0, 50))
+legend("topleft", c("Hyperplasia", "Metaplasia", "Mild dysplasia", "Moderate dysplasia", "Normal", "Severe dysplasia"), fill=c("blue", "green", "red", "purple", "orange", "pink"), inset=0.01, cex=0.85)
+
 ```
-We see substantial differences in sequencing depth, ranging from
-`r round(min(dge$sample$lib.size/1e6), digits=0)` to
-`r round(max(dge$sample$lib.size/1e6), digits=0)` million reads.
-Except for the IAV-A549 samples, which seem to have been all
-sequenced at a lower depth than the rest (< 10M), the other sample
-groups are not confounded with sequencing depth. Within sample groups,
-the RSV-549 mock samples were sequenced at a substantially higher
-depth than the RSV-infected ones.
 
 ## Distribution of expression levels among samples
 
@@ -399,6 +408,7 @@ data set.
 
 ```{r}
 dge.filt <- calcNormFactors(dge.filt)
+
 ```
 
 Replace the raw log2 CPM units in the corresponding assay element of
