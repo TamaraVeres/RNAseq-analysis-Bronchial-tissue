@@ -384,7 +384,45 @@ hist(avgexp, xlab="log2 CPM", main="", las=1)
 ```
 The histogram displays a bimodal distribution, which means there are two distinct peaks. The large peak to the left is the most prominent feature of the histogram, showing that most genes in this dataset are expressed at low levels or possibly not at all under the conditions of the experiment. On the right part, the peak which indicates that as gene expression levels increase, fewer genes are found at these higher expression levels.
 
+##Filtering 
 
+```{r}
+# Calculate average log2 CPM values
+avgexp <- rowMeans(assays(se)$logCPM)
+
+# Filter to keep only values between 5 and 10
+avgexp_filtered <- avgexp[avgexp >= 5 & avgexp <= 10]
+
+# Create histogram with the filtered data
+hist(avgexp_filtered, xlab="log2 CPM", main="", las=1, 
+     breaks=40, # Adjust the number of breaks to improve histogram resolution
+     xlim=c(5, 10)) # Set x-axis limits to show only the filtered range
+
+```
+```{r}
+mask <- rowMeans(assays(se)$logCPM) > 1
+  se.filt <- se[mask, ]
+  dge.filt <- dge[mask, ]
+  dim(se.filt)
+  
+cpmcutoff <- round(10/min(dge$sample$lib.size/1e6), digits=1)
+cpmcutoff
+
+nsamplescutoff <- 5
+nsamplescutoff
+mask <- avgexp >= 4 & avgexp <= 10
+se.filt <- se[mask, ]
+dge.filt <- dge[mask, ]
+dim(se.filt)
+
+par(mar=c(4, 5, 1, 1))
+  h <- hist(avgexp, xlab=expression("Expression level (" * log[2] * "CPM)"),
+            main="", las=1, col="grey", cex.axis=1.2, cex.lab=1.5)
+  x <- cut(rowMeans(assays(se.filt)$logCPM), breaks=h$breaks)
+  lines(h$mids, table(x), type="h", lwd=10, lend=1, col="red")
+  legend("topright", c("All genes", "Filtered genes"), fill=c("grey", "red"))
+
+```
 ## Filtering of lowly-expressed genes
 
 We filter lowly-expressed genes using the function `filterByExpr()`,
@@ -454,7 +492,7 @@ start examining the distribution of samples across the combination
 of cell line and treatment.
 
 ```{r}
-table(se.filt$cell_line, se.filt$treatment)
+table(se.filt$pack_years, se.filt$histology)
 ```
 
 We can see that not all combinations of cell line and treatment have
@@ -484,14 +522,16 @@ fold-changes produced by low counts. The resulting dendrogram is shown in
 Figure \@ref(fig:sampleClustering).
 
 ```{r sampleClustering, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S6: Hierarchical clustering of the samples. Labels correspond to treatment and sample identifer, while colors indicate sample group."}
-logCPM <- cpm(dge.filt, log=TRUE, prior.count=3)
+se.filt.nona <- se.filt[!grepl("dysplasia status: NA", se.filt$characteristics_ch1.7), ]
+dge.filt.nona <- dge.filt[!grepl("dysplasia status: NA", se.filt$characteristics_ch1.7), ]
+logCPM <- cpm(dge.filt.nona, log=TRUE, prior.count=3)
 d <- as.dist(1-cor(logCPM, method="spearman"))
 sampleClustering <- hclust(d)
-batch <- as.integer(se.filt$samplegroup)
+batch <- as.integer(se.filt.nona$histology)
 sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
-names(batch) <- colnames(se.filt)
-outcome <- paste(se.filt$treatment, colnames(se), sep="\n")
-names(outcome) <- colnames(se.filt)
+names(batch) <- colnames(se.filt.nona)
+outcome <- colnames(se.filt.nona)
+names(outcome) <- colnames(se.filt.nona)
 sampleDendrogram <- dendrapply(sampleDendrogram,
                                function(x, batch, labels) {
                                  if (is.leaf(x)) {
@@ -502,8 +542,10 @@ sampleDendrogram <- dendrapply(sampleDendrogram,
                                }, batch, outcome)
 plot(sampleDendrogram, main="Hierarchical clustering of samples",
      cex=0.7)
-legend("topright", levels(se.filt$samplegroup),
-       fill=seq_len(nlevels(se.filt$samplegroup)))
+legend("topright", levels(se.filt.nona$pack_years),
+       fill=seq_len(nlevels(se.filt.nona$pack_years)))
+
+
 ```
 
 As expected, NHBE cell line samples cluster separately from A549 samples
@@ -516,11 +558,11 @@ away from its group. In Figure \@ref(fig:mdsPlot) we show the
 corresponding MDS plot.
 
 ```{r mdsPlot, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S7: Multidimensional scaling plot of the samples. Labels correspond to treatment and colors indicate sample group."}
-outcome <- se.filt$treatment
-names(outcome) <- colnames(se.filt)
+outcome <- colnames(se.filt.nona)
+names(outcome) <- colnames(se.filt.nona)
 plotMDS(dge.filt, labels=outcome, col=batch)
-legend("bottomleft", levels(se.filt$samplegroup),
-       fill=seq_len(nlevels(se.filt$samplegroup)), inset=0.05)
+legend("bottomleft", levels(se.filt$pack_years),
+       fill=seq_len(nlevels(se.filt$pack_years)), inset=0.05)
 ```
 
 The MDS plot shows even more clear differences between A549 and NHBE samples and
