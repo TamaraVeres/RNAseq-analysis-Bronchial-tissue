@@ -384,21 +384,6 @@ hist(avgexp, xlab="log2 CPM", main="", las=1)
 ```
 The histogram displays a bimodal distribution, which means there are two distinct peaks. The large peak to the left is the most prominent feature of the histogram, showing that most genes in this dataset are expressed at low levels or possibly not at all under the conditions of the experiment. On the right part, the peak which indicates that as gene expression levels increase, fewer genes are found at these higher expression levels.
 
-##Filtering 
-
-```{r}
-# Calculate average log2 CPM values
-avgexp <- rowMeans(assays(se)$logCPM)
-
-# Filter to keep only values between 5 and 10
-avgexp_filtered <- avgexp[avgexp >= 5 & avgexp <= 10]
-
-# Create histogram with the filtered data
-hist(avgexp_filtered, xlab="log2 CPM", main="", las=1, 
-     breaks=40, # Adjust the number of breaks to improve histogram resolution
-     xlim=c(5, 10)) # Set x-axis limits to show only the filtered range
-
-```
 ```{r}
 mask <- rowMeans(assays(se)$logCPM) > 1
   se.filt <- se[mask, ]
