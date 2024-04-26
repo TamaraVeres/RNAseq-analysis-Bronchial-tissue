@@ -325,11 +325,7 @@ kable_styling(ktab, position="center")
 
 ## Sequencing depth
 
-Let's examine the sequencing depth in terms of total number of sequence
-read counts mapped to the genome per sample. Figure \@ref(fig:libsizes) below
-shows the sequencing depth per sample, also known as library sizes, in
-increasing order.
-
+In the following step let's evaluate the sequencing depth in terms of the total number of read counts that are mapped to each sample's genome. The sequencing depth per sample, commonly referred to as library sizes, is displayed in Figure \@ref(fig:libsizes) below with increasing order. 
 <!---
 you can control the height and width in pixels of the figure with
 'out.height' and 'out.width'. Figures are automatically numbered,
@@ -348,6 +344,10 @@ bp <- barplot(ordmreads, las=1, ylab="Millions of reads",
 legend("topleft", c("Hyperplasia", "Metaplasia", "Mild dysplasia", "Moderate dysplasia", "Normal", "Severe dysplasia"), fill=c("blue", "green", "red", "purple", "orange", "pink"), inset=0.01, cex=0.85)
 
 ```
+
+The plot displays a range of sequencing depths for various samples, each represented by an SRR identifier. The sequencing depth across our samples ranges from 20 to 50 million reads, with the majority falling between 30 to 40 million reads. This indicates a generally high level of coverage, which is beneficial for accurate genomic analysis. The plot also suggests that the highest number of reads corresponds to mild and moderate dysplasia, indicating early stages of cellular abnormalities that could potentially progress to cancer. The predominance of mild dysplasia in these samples could be of particular interest for early detection and intervention studies. There does not appear to be any evident bias in terms of sequencing depth across the conditions represented.
+
+
 
 ## Distribution of expression levels among samples
 
@@ -382,9 +382,8 @@ values across genes.
 avgexp <- rowMeans(assays(se)$logCPM)
 hist(avgexp, xlab="log2 CPM", main="", las=1)
 ```
-As expected, we have two modes, one for genes that are lowly expressed
-in nearly all samples and another for genes with some detectable levels
-of expression across a number of samples.
+The histogram displays a bimodal distribution, which means there are two distinct peaks. The large peak to the left is the most prominent feature of the histogram, showing that most genes in this dataset are expressed at low levels or possibly not at all under the conditions of the experiment. On the right part, the peak which indicates that as gene expression levels increase, fewer genes are found at these higher expression levels.
+
 
 ## Filtering of lowly-expressed genes
 
@@ -443,13 +442,10 @@ for (i in 1:ncol(se.filt)) {
   lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
-A number of samples display some expression-level dependent bias.
-For cases in which this occurs at the low-end of the expression level,
-one solution could be to have a more stringent filter on minimum
-expression (using a grouping with more samples per group, for instance).
-We should keep an eye on samples with these biases in case they also
-display other unexpected features, because then we might consider
-removing them.
+For genes above the horizontal line at M=0, expression is higher in the condition being tested against the reference, as for genes below, expression is lower.
+The red line represents a loess fit to the data, which should ideally be around M=0 if there is no differential expression between conditions. Any systematic deviation from M=0 indicates potential bias or systematic variation in the data. In most of the plots, the red line remains close to M=0 across the range of A values, indicating no systematic bias in expression changes relative to gene abundance.
+Some plots show a slight dip in the loess line at the lower end of the A scale, suggesting a potential bias for lowly expressed genes which could be potential candidates for differential expression. These points would be of interest for follow-up analyses.
+
 
 ## Experimental design and batch identification
 
