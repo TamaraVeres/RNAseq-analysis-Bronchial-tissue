@@ -386,6 +386,9 @@ The histogram displays a bimodal distribution, which means there are two distinc
 
 
 ## Filtering of lowly-expressed genes
+
+Now, let's filter lowly-expressed genes. We calculate row means of expression data and then we apply logical masks. We filter out genes which do not meet certain criteria such as minimum expression levels and a sample sample threshold. This step is needed to refine the dataset and remove noise, ensuring the subsequent analysis is based on high-quality data.
+
 ```{r}
 mask <- rowMeans(assays(se)$logCPM) > 1
   se.filt <- se[mask, ]
@@ -411,6 +414,7 @@ par(mar=c(4, 5, 1, 1))
 
 ```
 
+We are left with `r nrow(se.filt)` genes.
 
 ## Normalization
 
@@ -419,7 +423,6 @@ data set.
 
 ```{r}
 dge.filt <- calcNormFactors(dge.filt)
-
 ```
 
 Replace the raw log2 CPM units in the corresponding assay element of
@@ -454,58 +457,48 @@ for (i in 1:ncol(se.filt)) {
   lines(lo$x, lo$y, col="red", lwd=2)
 }
 ```
+
 For genes above the horizontal line at M=0, expression is higher in the condition being tested against the reference, as for genes below, expression is lower.
 The red line represents a loess fit to the data, which should ideally be around M=0 if there is no differential expression between conditions. Any systematic deviation from M=0 indicates potential bias or systematic variation in the data. In most of the plots, the red line remains close to M=0 across the range of A values, indicating no systematic bias in expression changes relative to gene abundance.
 Some plots show a slight dip in the loess line at the lower end of the A scale, suggesting a potential bias for lowly expressed genes which could be potential candidates for differential expression. These points would be of interest for follow-up analyses.
 
-
 ## Experimental design and batch identification
 
-Here try to understand the underlying experimental design. Let's
-start examining the distribution of samples across the combination
-of cell line and treatment.
+To identify potential columns which could introduce variability to batch, we looked at columns that contain information related to technical aspects, experimental conditions or processing details that could vaey between different batches. Here are some columns which we though could introduce unwanted variability: `submission_date`, `last_update_date`, `type`, `channel_count`, `extract_protocol_ch1`, `extract_protocol_ch1.1`, `data_processing`, `data_processing.1`, `data_processing.2`, `data_processing.3`, `data_processing.4`, `data_processing.5`, `data_processing.6`, `platform_id`, `instrument_model`, `library_selection`, `library_source`, `library_strategy`.
+
+These variables have the same values across all samples which suggests that they are not contributing to the variability of the dataset. For example:
+```{r}
+table(se.filt$histology, se.filt$library_strategy)
+```
+
+There is perfect correlation between library strategy and histology. This means that differences between our samples will be due to biological differences rather than technical. 
+
+Now let's examine the distribution between pack-years and histology.
 
 ```{r}
 table(se.filt$pack_years, se.filt$histology)
 ```
 
-We can see that not all combinations of cell line and treatment have
-been sequenced. For this reason, we can anticipate that it won't be
-possible to identify expression changes associated with all levels
-of these two factors. We will have to make comparisons
-within each cell line, between those treatments that have been
-sequenced.
-
-Now, let's look at the combination of sample preparation protocol
-and cell line.
-
-```{r}
-table(se.filt$extract_protocol_ch1, se$cell_line)
-```
-
-We can see that there is a perfect correlation between sample preparation
-protocol and cell line because the two cell lines were processed with
-different sample preparation protocols. This means that differences
-between NHBE and A549 samples are not going to be only due to biological
-differences but also technical.
+We can see that not all combinations of pack-years and histology have
+been sequenced. Some combinations have missing values, indicated by 0s. However, 
+with only two missing combinations out of the several possible combinations, the
+impact on the overall analysis may be minimal and not critical for the analysis. 
 
 We examine now how samples group together by hierarchical clustering
-and multidimensional scaling, annotating sample group and treatment. We
+and multidimensional scaling, annotating pack-years and histology. We
 calculate again log CPM values with a high prior count(3) to moderate extreme
 fold-changes produced by low counts. The resulting dendrogram is shown in
 Figure \@ref(fig:sampleClustering).
 
-```{r sampleClustering, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S6: Hierarchical clustering of the samples. Labels correspond to treatment and sample identifer, while colors indicate sample group."}
-se.filt.nona <- se.filt[!grepl("dysplasia status: NA", se.filt$characteristics_ch1.7), ]
-dge.filt.nona <- dge.filt[!grepl("dysplasia status: NA", se.filt$characteristics_ch1.7), ]
-logCPM <- cpm(dge.filt.nona, log=TRUE, prior.count=3)
+```{r sampleClustering, fig.height=8, fig.width=10, dpi=100, echo=FALSE, fig.cap="Figure S6: Hierarchical clustering of the samples. Labels correspond to pack-years and sample identifer, while colors indicate histology groups."}
+logCPM <- cpm(dge.filt, log=TRUE, prior.count=3)
 d <- as.dist(1-cor(logCPM, method="spearman"))
 sampleClustering <- hclust(d)
-batch <- as.integer(se.filt.nona$histology)
+batch <- as.integer(se.filt$histology)
 sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
-names(batch) <- colnames(se.filt.nona)
-outcome <- colnames(se.filt.nona)
-names(outcome) <- colnames(se.filt.nona)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$pack_years, colnames(se), sep="\n")
+names(outcome) <- colnames(se.filt)
 sampleDendrogram <- dendrapply(sampleDendrogram,
                                function(x, batch, labels) {
                                  if (is.leaf(x)) {
@@ -515,37 +508,24 @@ sampleDendrogram <- dendrapply(sampleDendrogram,
                                  x
                                }, batch, outcome)
 plot(sampleDendrogram, main="Hierarchical clustering of samples",
-     cex=0.7)
-legend("topright", levels(se.filt.nona$pack_years),
-       fill=seq_len(nlevels(se.filt.nona$pack_years)))
-
+     cex=1)
+legend("topright", levels(se.filt$histology),
+       fill=seq_len(nlevels(se.filt$histology)))
 
 ```
 
-As expected, NHBE cell line samples cluster separately from A549 samples
-and cell line seems to drive the largest portion of the variablity in
-the whole dataset. Next to this observation, all samples cluster by
-sample group, except one of the IAV-infected cells. Looking up its
-identifier, it does not correspond to the sample of lowest sequencing
-depth and therefore, there's probably other reason than depth to cluster
-away from its group. In Figure \@ref(fig:mdsPlot) we show the
+Samples are linked together based on their similarity, with the branches connecting those most similar first. As we move up the tree, the connections represent progressively less similar groups until all are joined in a single cluster. Samples do not really cluster together by histology type, which means histology type is not the primary factor driving the similarity or dissimilarity between samples.
+
+In Figure \@ref(fig:mdsPlot) we show the
 corresponding MDS plot.
 
 ```{r mdsPlot, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S7: Multidimensional scaling plot of the samples. Labels correspond to treatment and colors indicate sample group."}
-outcome <- colnames(se.filt.nona)
-names(outcome) <- colnames(se.filt.nona)
+outcome <- se.filt$pack_years
+names(outcome) <- colnames(se.filt)
 plotMDS(dge.filt, labels=outcome, col=batch)
-legend("bottomleft", levels(se.filt$pack_years),
-       fill=seq_len(nlevels(se.filt$pack_years)), inset=0.05)
+legend("bottomleft", levels(se.filt$histology),
+       fill=seq_len(nlevels(se.filt$histology)), inset=0.05)
 ```
-
-The MDS plot shows even more clear differences between A549 and NHBE samples and
-suggests clearly that samples group by the type of infection. As described by
-@blancomelo20, mock-treated samples were cultured to match the conditions of
-the corresponding infected samples. For this reason, in this dataset it only
-makes sense to compare infected with mock samples within their corresponding
-cultured group.
-
 # Differential expression
 
 We perform a simple assessment of the extent of expression changes and their
