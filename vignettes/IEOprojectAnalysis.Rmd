@@ -3,7 +3,7 @@ title: "IEO Project Analysis"
 author:
 - name: "Radostina Kisleva, Emma Juan Salazar, Tamara-Dora Veres"
   affiliation: Universitat Pompeu Fabra
-  email: radostina.kisleva01@estudiant.upf.edu, emma.juan01@estudiant.upf.edu, tamaradora.veres01@estudiant.upf.edu
+  email: radostina.kisleva01@estudiant.upf.edu,  emma.juan01@estudiant.upf.edu,  tamaradora.veres01@estudiant.upf.edu
 date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
@@ -61,21 +61,21 @@ Lung cancer is the leading cause of cancer-related death in the United
 States. The molecular events preceding the onset of disease are poorly
 understood, and no effective tools exist to identify smokers with
 premalignant lesions (PMLs) that will progress to invasive cancer.
-Previous research did identify molecular changes in the smoke-exposed
-airway, but the focus of the peper [**Detecting the Presence and
+Previous research has identified molecular changes in the smoke-exposed
+airways. However, the focus of the paper "Detecting the Presence and
 Progression of Premalignant Lung Lesions via Airway Gene
-Expression**] @Beane17 is in the
-earlier stages of the disease process, using samples from the same
-airway field of injury to study PMLs and their utility in preventing
+Expression" @Beane17 shifts the focus to the first stages of the disease progress.
+They utilize samples from the same
+airway field of injury to study PMLs and their potential in preventing
 lung cancer.
 
-The researcher's goal is to profile samples extracted from normal
+The researchers' goal is to profile samples extracted from normal
 appearing bronchial mucosa by mRNA-Seq, and attempt to find
 differentially expressed gene sets and pathways between subjects with
 PMLs and without PMLs. From the original 82 samples, 50 subjects had
 PML, 25 didn't, and 7 were excluded in the end.
 
-The resulting raw RNA-seq data have been deposited at the Gene
+The resulting raw RNA-seq data has been deposited at the Gene
 Expression Omnibus (GEO), where they are publicly available under
 accession
 [GSE79209](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE79209).
