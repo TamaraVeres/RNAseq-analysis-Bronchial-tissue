@@ -1,9 +1,9 @@
 ---
 title: "IEO Project template"
 author:
-- name: "Robert Castelo"
+- name: "Radostina Kisleva, Emma Juan Salazar, Tamara-Dora Veres"
   affiliation: Universitat Pompeu Fabra
-  email: robert.castelo@upf.edu
+  email: radostina.kisleva01@estudiant.upf.edu, emma.juan01@estudiant.upf.edu, tamaradora.veres01@estudiant.upf.edu
 date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
@@ -436,7 +436,7 @@ assays(se.filt)$logCPM <- cpm(dge.filt, log=TRUE,
 ## MA-plots
 
 We examine now the MA-plots of the normalized expression profiles
-in Figure \@ref(fig:maPlots).
+in Figure \@ref(fig:maplots)
 
 <!---
 Here we make a MA-plot for each sample. The options 'fig.height'
@@ -446,7 +446,7 @@ where 'dpi' is the image resolution in "dots per inch" (by default
 dpi=72). To scale the image to a desired size use 'out.width' and
 'out.height'. More information at http://yihui.name/knitr/options
 --->
-```{r maPlots, fig.height=18, fig.width=10, dpi=100, echo=FALSE, fig.cap="MA-plots of filtered and normalized expression values."}
+```{r maplots, fig.height=18, fig.width=10, dpi=100, echo=FALSE, fig.cap="MA-plots of filtered and normalized expression values."}
 par(mfrow=c(5, 4), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(se.filt)) {
   A <- rowMeans(assays(se.filt)$logCPM)
@@ -528,53 +528,137 @@ legend("bottomleft", levels(se.filt$histology),
 ```
 # Differential expression
 
-We perform a simple assessment of the extent of expression changes and their
-associated p-values using the F-test implemented in the R/Bioconductor package
-[sva](http://bioconductor.org/packages/sva). We compare mock with SARS-Cov-2
-infected samples in the NHBE cell line. We first subset the data as follows:
+We can do an analysis to observe differential expression based on the
+two following groupings:
+
+***Histology***
+
+We can separate the samples' Max. Histology in two groups: Normal vs.
+Dysplasia.
+
+The *Normal* group will contain all samples that are Normal or have
+Hyperplasia.
+
+The *Dysplasia* group will contain all samples with Dysplasia: Mild
+Dysplasia, Moderate dysplasia and Severe dysplasia
+
+***COPD***
+
+(Chronic obstructive pulmonary disease)
+
+Samples with COPD vs. samples without COPD
+
+## Analysing Fold-Change
+
+In first instance, a simple way to find Differentially Expressed genes
+is to simply compare expression levels between the two groups of
+samples.
+
+We can do this using **fold-change**, which compares the mean read
+counts using the logarithmic scale to try and stabilize variability
+across expression levels.
+
+### COPD
+
+Our two groups of samples are : samples with COPD and samples with No
+COPD. We calculate the means of the values of the expression levels.
 
 ```{r}
-se.filt.COV2NHBE <- se.filt[, se.filt$samplegroup == "COV2NHBE"]
-se.filt.COV2NHBE$treatment <- droplevels(se.filt.COV2NHBE$treatment)
+copd <- rowMeans(logCPM[, se.filt$copd_status=="COPD"])
+no_copd <- rowMeans(logCPM[, se.filt$copd_status=="No COPD"])
 ```
-In the second step above, we dropped the unused levels from the treatment
-factor variable. This is important to avoid using factor levels that do not
-exist in this subset of the data. We build now the corresponding full and null
-model matrices.
+
+Now we can build two plots to compare fold-change between the two
+groups.
 
 ```{r}
-mod <- model.matrix(~ se.filt.COV2NHBE$treatment,
-                    colData(se.filt.COV2NHBE))
-mod0 <- model.matrix(~ 1, colData(se.filt.COV2NHBE))
+par(mfrow=c(1, 2))
+plot(copd, no_copd, xlab="COPD", ylab="No COPD", pch=".", cex=4, las=1)
+plot((copd+no_copd)/2, copd-no_copd, xlab="(COPD + No COPD)/2", ylab="COPD - No COPD", pch=".", cex=4, las=1)
 ```
+
+### Histology
+
+Our two groups of samples are No Dysplasia and Dysplasia. We create a
+new column in our SE to dichotomize the histology. We assign "Normal",
+"Hyperplasia" and "Metaplasia" to the **No Dysplasia** group, and we
+assign "Mild dysplasia", "Moderate dysplasia", and "Severe dysplasia" to
+the **Dysplasia** group
+
+```{r}
+se.filt$dysplasia[se.filt$histology == "Normal"] <- "No Dysplasia"
+se.filt$dysplasia[se.filt$histology == "Hyperplasia"] <- "No Dysplasia"
+se.filt$dysplasia[se.filt$histology == "Metaplasia"] <- "No Dysplasia"
+se.filt$dysplasia[se.filt$histology == "Mild dysplasia"] <- "Dysplasia"
+se.filt$dysplasia[se.filt$histology == "Moderate dysplasia"] <- "Dysplasia"
+se.filt$dysplasia[se.filt$histology == "Severe dysplasia"] <- "Dysplasia"
+```
+
+```{r}
+
+#se.filt.dysplasia <- se.filt[, !is.na(se.filt$dysplasia)]
+se.filt.dysplasia <- se.filt
+
+no_dysplasia <- rowMeans(logCPM[, se.filt.dysplasia$dysplasia=="No Dysplasia"])
+dysplasia <- rowMeans(logCPM[, se.filt.dysplasia$dysplasia=="Dysplasia"])
+
+```
+
+Now we can build two plots to compare fold-change between the two
+groups.
+
+```{r}
+par(mfrow=c(1, 2))
+plot(no_dysplasia, dysplasia, xlab="No Dysplasia", ylab="Dysplasia", pch=".", cex=4, las=1)
+plot((no_dysplasia+dysplasia)/2, no_dysplasia-dysplasia, xlab="(No Dysplasia + Dysplasia)/2", ylab="No Dysplasia - Dysplasia", pch=".", cex=4, las=1)
+```
+
+## **Performing Differential Expression (DE)**
+
+We perform a simple assessment of the extent of expression changes and
+their associated p-values using the F-test implemented in the
+R/Bioconductor package [sva](http://bioconductor.org/packages/sva). We
+compare two groups of samples in the following ways.
+
+### COPD
+
+We compare samples that have COPD with samples that don't have COPD. We
+have previously subsetted the data the way we needed.
+
+We build now the corresponding full and null model matrices.
+
+```{r}
+mod <- model.matrix(~ se.filt$copd_status, colData(se.filt))
+mod0 <- model.matrix(~ 1, colData(se.filt))
+```
+
 Finally, we conduct the F-test implemented in the package `sva` and
-examine the amount of differential expression between SARS-Cov-2
-infected and mock cells.
+examine the amount of differential expression between samples with COPD
+and without.
 
 ```{r, message=FALSE}
 library(sva)
+library(limma)
 
-pv <- f.pvalue(assays(se.filt.COV2NHBE)$logCPM, mod, mod0)
+pv <- f.pvalue(assays(se.filt)$logCPM, mod, mod0)
 sum(p.adjust(pv, method="fdr") < 0.05)
-sum(p.adjust(pv, method="fdr") < 0.1)
 ```
 
 We obtain `r sum(p.adjust(pv, method="fdr") < 0.05)` differentially
-expressed (DE) genes at FDR < 5% and
-`r sum(p.adjust(pv, method="fdr") < 0.1)` at FDR < 10%. In Figure
-\@ref(fig:pdistCOV2NHBE) below we can see the distribution of the
-resulting p-values.
+expressed (DE) genes at FDR \< 5%. In Figure \@ref(fig:pdistCOPD) below
+we can see the distribution of the resulting p-values.
 
-```{r pdistCOV2NHBE, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between SARS-Cov-2 infected and mock samples in NHBE cell lines."}
+```{r pdistCOPD, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between samples with COPD and samples without COPD."}
 hist(pv, main="", las=1)
 ```
 
-We build a table with the subset of `r sum(p.adjust(pv, method="fdr") < 0.1)`
-DE genes with FDR < 10% and show the top-10 genes with lowest p-value in
-Table \@ref(tab:DEgenesSARScov2NHBE) below.
+We build a table with the subset of
+`r sum(p.adjust(pv, method="fdr") < 0.1)` DE genes with FDR \< 10% and
+show the top-10 genes with lowest p-value in Table
+\@ref(tab:DEgenesCOPD) below.
 
 ```{r, message=FALSE}
-mask <- p.adjust(pv, method="fdr") < 0.1
+mask <- p.adjust(pv, method="fdr") < 0.5
 DEgenesEGs <- names(pv)[mask]
 DEgenesSyms <- mcols(se.filt)[DEgenesEGs, "symbol"]
 DEgenesPvalue <- pv[mask]
@@ -589,6 +673,7 @@ DEgenesTab <- DEgenesTab[order(DEgenesTab[["P value"]]), ] ## order by p-value
 rownames(DEgenesTab) <- 1:nrow(DEgenesTab)
 ```
 
+```{=html}
 <!--
 The following code chunk is hidden because its lines are not that relevant
 to the analysis of the data. Their purpose is to dump the table of DE genes
@@ -596,13 +681,13 @@ into an HTML table and a CSV file to facilitate the examination of long lists
 of DE genes while avoiding to produce a lengthy vignette by showing only the
 top-10 DE genes.
 --->
-
+```
 ```{r, echo=FALSE}
 ## generate full table in a CSV file and store it in the 'doc' directory
 ## twice, once in 'doc' to enable quickly look up during vignette editing
 ## and building with 'devtools::build_vignettes()' and a second time in
 ## 'inst/doc' to make these files available at install.
-fnameCSV <- "DEgenesSARScov2NHBE.csv"
+fnameCSV <- "DEgenesCOPD.csv"
 fpathCSV <- file.path(path2pkg, "doc", fnameCSV)
 write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
 fpathCSV <- file.path(path2pkg, "inst", "doc", fnameCSV)
@@ -614,18 +699,19 @@ write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
 ## into HTML, we need to avoid using the '<' symbol, as in FDR < 10%,
 ## and put its HTML code instead (&lt;)
 ktab <- kable(DEgenesTab, "html", escape=FALSE, row.names=TRUE,
-              caption=sprintf("Differentially expressed genes. Differentially expressed genes between SARS-Cov-2 infected and mock NHBE cells with FDR &lt; 10%% (CSV <a href=\"%s\" download>file</a>).",
+              caption=sprintf("Differentially expressed genes. Differentially expressed genes between samples with COPD and samples without COPD, with FDR &lt; 5%% (CSV <a href=\"%s\" download>file</a>).",
                               fnameCSV))
 ktab <- kable_styling(ktab,
                       bootstrap_options=c("stripped", "hover", "responsive"),
                       fixed_thead=TRUE)
-fnameHTML <- "DEgenesSARScov2NHBE.html"
+fnameHTML <- "DEgenesCOPD.html"
 fpathHTML <- file.path(path2pkg, "doc", fnameHTML)
 save_kable(ktab, file=fpathHTML, self_contained=TRUE)
 fpathHTML <- file.path(path2pkg, "inst", "doc", fnameHTML)
 save_kable(ktab, file=fpathHTML, self_contained=TRUE)
 ```
 
+```{=html}
 <!--
 The following code chunk is also hidden because its purpose is to produce
 a short HTML table of the top-10 DE genes. The reason show here only the
@@ -637,10 +723,125 @@ note that because the table caption is not translated from Markdown, but
 directly copied into HTML, we need to avoid using the '<' symbol, as in
 FDR < 10%, and put its HTML code instead (&lt;)
 --->
-
-```{r DEgenesSARScov2NHBE, echo=FALSE}
+```
+```{r DEgenesCOPD, echo=FALSE}
 ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE, 
-              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between SARS-Cov-2 infected and mock NHBE cells with FDR &lt; 10%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
+              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between samples with COPD and without COPD with FDR &lt; 5%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
+                              fnameHTML, fnameCSV))
+kable_styling(ktab, position="center")
+```
+
+### **Histology**
+
+We compare samples that have Dysplasia with samples that don't have
+Dysplasia. We have previously subsetted the data the way we needed.
+
+We build now the corresponding full and null model matrices.
+
+```{r}
+mod <- model.matrix(~ se.filt.dysplasia$dysplasia, colData(se.filt.dysplasia))
+mod0 <- model.matrix(~ 1, colData(se.filt.dysplasia))
+```
+
+Finally, we conduct the F-test implemented in the package `sva` and
+examine the amount of differential expression between samples with
+Dysplasia and samples with Hyperplasia/Normal samples.
+
+```{r, message=FALSE}
+library(sva)
+library(limma)
+
+pv <- f.pvalue(assays(se.filt.dysplasia)$logCPM, mod, mod0)
+sum(p.adjust(pv, method="fdr") < 0.05)
+```
+
+We obtain `r sum(p.adjust(pv, method="fdr") < 0.05)` differentially
+expressed (DE) genes at FDR \< 5% and
+`r sum(p.adjust(pv, method="fdr") < 0.1)` at FDR \< 10%. In Figure
+\@ref(fig:pdistDysplasia) below we can see the distribution of the
+resulting p-values.
+
+```{r pdistDysplasia, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between samples with Dysplasia and samples with Hyperplasia/Normal samples."}
+sum(p.adjust(pv, method="fdr") < 0.05)
+hist(pv, main="", las=1)
+```
+
+We build a table with the subset of
+`r sum(p.adjust(pv, method="fdr") < 0.05)` DE genes with FDR \< 5% and
+show the top-10 genes with lowest p-value in Table
+\@ref(tab:DEgenesDysplasia) below.
+
+```{r, message=FALSE}
+mask <- p.adjust(pv, method="fdr") < 0.05
+DEgenesEGs <- names(pv)[mask]
+DEgenesSyms <- mcols(se.filt.dysplasia)[DEgenesEGs, "symbol"]
+DEgenesPvalue <- pv[mask]
+DEgenesDesc <- mcols(se.filt.dysplasia)[DEgenesEGs, "description"]
+DEgenesDesc <- sub(" \\[.+\\]", "", DEgenesDesc)
+DEgenesTab <- data.frame(EntrezID=DEgenesEGs,
+                         Symbol=DEgenesSyms,
+                         Description=DEgenesDesc,
+                         "P value"=DEgenesPvalue,
+                         stringsAsFactors=FALSE, check.names=FALSE)
+
+DEgenesTab <- DEgenesTab[order(DEgenesTab[["P value"]]), ] ## order by p-value
+rownames(DEgenesTab) <- 1:nrow(DEgenesTab)
+```
+
+```{=html}
+<!--
+The following code chunk is hidden because its lines are not that relevant
+to the analysis of the data. Their purpose is to dump the table of DE genes
+into an HTML table and a CSV file to facilitate the examination of long lists
+of DE genes while avoiding to produce a lengthy vignette by showing only the
+top-10 DE genes.
+--->
+```
+```{r, echo=FALSE}
+## generate full table in a CSV file and store it in the 'doc' directory
+## twice, once in 'doc' to enable quickly look up during vignette editing
+## and building with 'devtools::build_vignettes()' and a second time in
+## 'inst/doc' to make these files available at install.
+fnameCSV <- "DEgenesDysplasia.csv"
+fpathCSV <- file.path(path2pkg, "doc", fnameCSV)
+write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
+fpathCSV <- file.path(path2pkg, "inst", "doc", fnameCSV)
+write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
+
+## generate full table in HTML and store it into the 'doc' directory
+## twice, just as we did with the CSV file. note that because the
+## table caption is not translated from Markdown, but directly copied
+## into HTML, we need to avoid using the '<' symbol, as in FDR < 10%,
+## and put its HTML code instead (&lt;)
+ktab <- kable(DEgenesTab, "html", escape=FALSE, row.names=TRUE,
+              caption=sprintf("Differentially expressed genes. Differentially expressed genes between samples with Dysplasia and samples with no Dysplasia, with FDR &lt; 5%% (CSV <a href=\"%s\" download>file</a>).",
+                              fnameCSV))
+ktab <- kable_styling(ktab,
+                      bootstrap_options=c("stripped", "hover", "responsive"),
+                      fixed_thead=TRUE)
+fnameHTML <- "DEgenesDysplasia.html"
+fpathHTML <- file.path(path2pkg, "doc", fnameHTML)
+save_kable(ktab, file=fpathHTML, self_contained=TRUE)
+fpathHTML <- file.path(path2pkg, "inst", "doc", fnameHTML)
+save_kable(ktab, file=fpathHTML, self_contained=TRUE)
+```
+
+```{=html}
+<!--
+The following code chunk is also hidden because its purpose is to produce
+a short HTML table of the top-10 DE genes. The reason show here only the
+top-10 genes is to producing a long vignette. The full HTML table and the
+corresponding CSV file are linked through the caption of this short HTML
+table.
+
+note that because the table caption is not translated from Markdown, but
+directly copied into HTML, we need to avoid using the '<' symbol, as in
+FDR < 10%, and put its HTML code instead (&lt;)
+--->
+```
+```{r DEgenesDysplasia, echo=FALSE}
+ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE, 
+              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between samples with Dysplasia and samples with No Dysplasia, with FDR &lt; 5%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
                               fnameHTML, fnameCSV))
 kable_styling(ktab, position="center")
 ```
