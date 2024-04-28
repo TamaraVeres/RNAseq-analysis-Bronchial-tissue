@@ -57,82 +57,93 @@ path2pkg <- here()
 
 # Introduction
 
-The severe acute respiratory syndrome-related coronavirus 2 (SARS-CoV-2)
-is a highly pathogenic human zoonotic
-[coronavirus](https://en.wikipedia.org/wiki/Coronavirus), which causes
-Coronavirus disease 2019 (COVID-19). In an effort to understand the host
-transcriptional response to the SARS-Cov-2 virus, @blancomelo20 sequenced the
-transcriptome of two different human cell lines, human alveolar adenocarcinoma
-cells (A549) and primary human bronchial epithelial (NHBE) cells, after
-infecting them with SARS-Cov-2, seasonal influenza A virus (IAV) and human
-respiratory syncytial virus (RSV), and growing them in the same culture
-conditions without infection (mock).
+Lung cancer is the leading cause of cancer-related death in the United
+States. The molecular events preceding the onset of disease are poorly
+understood, and no effective tools exist to identify smokers with
+premalignant lesions (PMLs) that will progress to invasive cancer.
+Previous research did identify molecular changes in the smoke-exposed
+airway, but the focus of the peper [**Detecting the Presence and
+Progression of Premalignant Lung Lesions via Airway Gene
+Expression**] @Beane17 is in the
+earlier stages of the disease process, using samples from the same
+airway field of injury to study PMLs and their utility in preventing
+lung cancer.
 
-The resulting raw RNA-seq data have been deposited at the Gene Expression
-Omnibus (GEO), where they are publicly available under accession
-[GSE147507](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE147507).
-Here, we show a first exploratory analysis of the corresponding RNA-seq gene
-expression profiles generated as a table of counts using the DEE2
-(https://dee2.io) pipeline by @ziemann19, and further packaged into a
+The researcher's goal is to profile samples extracted from normal
+appearing bronchial mucosa by mRNA-Seq, and attempt to find
+differentially expressed gene sets and pathways between subjects with
+PMLs and without PMLs. From the original 82 samples, 50 subjects had
+PML, 25 didn't, and 7 were excluded in the end.
+
+The resulting raw RNA-seq data have been deposited at the Gene
+Expression Omnibus (GEO), where they are publicly available under
+accession
+[GSE79209](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE79209).
+Here, we show a first exploratory analysis of the corresponding RNA-seq
+gene expression profiles generated as a table of counts using the DEE2
+(<https://dee2.io>) pipeline by @ziemann19, and further packaged into a
 [SummarizedExperiment](https://bioconductor.org/packages/SummarizedExperiment)
 object with genes mapped to Entrez identifiers. This object also stores
 the phenotypic information about the profiled samples that has been also
 made available at GEO.
 
-The directories in this package template follow the structure of an R package
-(consult this [link](http://r-pkgs.had.co.nz) for further information) adapted
-for the purpose of data analysis:
+## Instructions for navigating the R package.
 
-  * R: functions to avoid repeating steps and store auxiliary code,
-  used in the vignette.
-  
-  * vignettes: Rmarkdown document of the data analysis.
-  
-  * inst/extdata: repository of the data to be analyzed and any other
-  kind of additional functional and annotation data employed during
-  the analysis and which is unavailable through an R package. This
-  directory is moved to the package root directory at install.
-  
-  * inst/doc: repository for the results of the analysis that we
-  want to provide without having to run the entire analysis again, e.g.,
-  tables of differentially expressed genes. This directory is moved
-  to the package root directory at install, where also the vignettes
-  are installed.
-  
-  * man: manual pages of functions defined in the R directory that
-  for some reason we want to export from the package.
-  
+The directories in this package template follow the structure of an R
+package (consult this [link](http://r-pkgs.had.co.nz) for further
+information) adapted for the purpose of data analysis:
+
+-   R: functions to avoid repeating steps and store auxiliary code, used
+    in the vignette.
+
+-   vignettes: Rmarkdown document of the data analysis.
+
+-   inst/extdata: repository of the data to be analyzed and any other
+    kind of additional functional and annotation data employed during
+    the analysis and which is unavailable through an R package. This
+    directory is moved to the package root directory at install.
+
+-   inst/doc: repository for the results of the analysis that we want to
+    provide without having to run the entire analysis again, e.g.,
+    tables of differentially expressed genes. This directory is moved to
+    the package root directory at install, where also the vignettes are
+    installed.
+
+-   man: manual pages of functions defined in the R directory that for
+    some reason we want to export from the package.
+
 Every other directory you see in this package has been automatically
 generated in the package building process as, for instance, the `doc`
 directory with the result of the vignette.
 
-When you edit and adapt this vignette for your own data analysis project,
-you should do it in the `.Rmd` file of the `vignettes` directory
-(**not** the one copied to the `doc` directory because this one is overwritten
-during package building and if you edit there **you will loose your edits**).
-To build this vignette without building the entire package, you should type
-the following in the R shell:
+When you edit and adapt this vignette for your own data analysis
+project, you should do it in the `.Rmd` file of the `vignettes`
+directory (**not** the one copied to the `doc` directory because this
+one is overwritten during package building and if you edit there **you
+will loose your edits**). To build this vignette without building the
+entire package, you should type the following in the R shell:
 
 ```{r, eval=FALSE}
 devtools::build_vignettes()
 ```
 
-This function call will build your vignette and copy the resulting HTML to
-the `doc` directory. Thus, to see the result, you should go there and open
-that HTML file.
+This function call will build your vignette and copy the resulting HTML
+to the `doc` directory. Thus, to see the result, you should go there and
+open that HTML file.
 
-The rest of the documentation of this package is provided within the files
-of the R directory using
+The rest of the documentation of this package is provided within the
+files of the R directory using
 [roxygen2](https://cran.r-project.org/web/packages/roxygen2/vignettes/roxygen2.html),
-which means that before you build the entire package you have to generate the
-documentation and `NAMESPACE` file typing in the R shell:
+which means that before you build the entire package you have to
+generate the documentation and `NAMESPACE` file typing in the R shell:
 
 ```{r, eval=FALSE}
 devtools::document()
 ```
 
-Both steps, calling `devtools::build_vignettes()` and `devtools::document()`
-have to be done from the root directory of your package.
+Both steps, calling `devtools::build_vignettes()` and
+`devtools::document()` have to be done from the root directory of your
+package.
 
 # Quality assessment
 
@@ -406,7 +417,7 @@ assays(se.filt)$logCPM <- cpm(dge.filt, log=TRUE,
 ## MA-plots
 
 We examine now the MA-plots of the normalized expression profiles
-in Figure \@ref(fig:maplots).
+in the figures below.
 
 <!---
 Here we make a MA-plot for each sample. The options 'fig.height'
@@ -416,7 +427,7 @@ where 'dpi' is the image resolution in "dots per inch" (by default
 dpi=72). To scale the image to a desired size use 'out.width' and
 'out.height'. More information at http://yihui.name/knitr/options
 --->
-```{r maplots, fig.height=18, fig.width=10, dpi=100, echo=FALSE, fig.cap="MA-plots of filtered and normalized expression values."}
+```{r maPlots, fig.height=18, fig.width=10, dpi=100, echo=FALSE, fig.cap="MA-plots of filtered and normalized expression values."}
 par(mfrow=c(5, 4), mar=c(4, 5, 3, 1))
 for (i in 1:ncol(se.filt)) {
   A <- rowMeans(assays(se.filt)$logCPM)
@@ -496,6 +507,7 @@ plotMDS(dge.filt, labels=outcome, col=batch)
 legend("bottomleft", levels(se.filt$histology),
        fill=seq_len(nlevels(se.filt$histology)), inset=0.05)
 ```
+
 # Differential expression
 
 We can do an analysis to observe differential expression based on the
@@ -503,11 +515,11 @@ two following groupings:
 
 ***Histology***
 
-We can separate the samples' Max. Histology in two groups: Normal vs.
-Dysplasia.
+We can separate the samples' Max. Histology in two groups: Dysplasia vs.
+No Dysplasia.
 
-The *Normal* group will contain all samples that are Normal or have
-Hyperplasia.
+The *No Dysplasia* group will contain all samples that are Normal, have
+Hyperplasia or Metaplasia.
 
 The *Dysplasia* group will contain all samples with Dysplasia: Mild
 Dysplasia, Moderate dysplasia and Severe dysplasia
@@ -530,7 +542,7 @@ across expression levels.
 
 ### COPD
 
-Our two groups of samples are : samples with COPD and samples with No
+Our two groups of samples are: samples with COPD and samples with No
 COPD. We calculate the means of the values of the expression levels.
 
 ```{r}
@@ -538,10 +550,10 @@ copd <- rowMeans(logCPM[, se.filt$copd_status=="COPD"])
 no_copd <- rowMeans(logCPM[, se.filt$copd_status=="No COPD"])
 ```
 
-Now we can build two plots to compare fold-change between the two
-groups.
+Now we can build two plots to compare fold-change between the two groups
+(Figure \@ref(fig:foldCOPD)).
 
-```{r}
+```{r foldCOPD, fig.cap="Plot analysing the difference in expression between samples with and without COPD."}
 par(mfrow=c(1, 2))
 plot(copd, no_copd, xlab="COPD", ylab="No COPD", pch=".", cex=4, las=1)
 plot((copd+no_copd)/2, copd-no_copd, xlab="(COPD + No COPD)/2", ylab="COPD - No COPD", pch=".", cex=4, las=1)
@@ -565,30 +577,35 @@ se.filt$dysplasia[se.filt$histology == "Severe dysplasia"] <- "Dysplasia"
 ```
 
 ```{r}
-
-#se.filt.dysplasia <- se.filt[, !is.na(se.filt$dysplasia)]
-se.filt.dysplasia <- se.filt
-
-no_dysplasia <- rowMeans(logCPM[, se.filt.dysplasia$dysplasia=="No Dysplasia"])
-dysplasia <- rowMeans(logCPM[, se.filt.dysplasia$dysplasia=="Dysplasia"])
-
+no_dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="No Dysplasia"])
+dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="Dysplasia"])
 ```
 
-Now we can build two plots to compare fold-change between the two
-groups.
+Now we can build two plots to compare fold-change between the two groups
+(Figure \@ref(fig:foldDysplasia))
 
-```{r}
+```{r foldDysplasia, fig.cap="Plot analysing the difference in expression between samples with and without Dysplasia"}
 par(mfrow=c(1, 2))
 plot(no_dysplasia, dysplasia, xlab="No Dysplasia", ylab="Dysplasia", pch=".", cex=4, las=1)
 plot((no_dysplasia+dysplasia)/2, no_dysplasia-dysplasia, xlab="(No Dysplasia + Dysplasia)/2", ylab="No Dysplasia - Dysplasia", pch=".", cex=4, las=1)
 ```
 
-## **Performing Differential Expression (DE)**
+We can see the fold-change plot for the Dysplasia comparison (Figure
+\@ref(fig:foldDysplasia)) has a wider distribution than the COPD
+fold-change plot (Figure \@ref(fig:foldCOPD)), which suggests we'll have
+a higher number of Differentially Expressed genes in the Dysplasia DE
+Analysis.
+
+## Performing Differential Expression (DE)
 
 We perform a simple assessment of the extent of expression changes and
 their associated p-values using the F-test implemented in the
 R/Bioconductor package [sva](http://bioconductor.org/packages/sva). We
 compare two groups of samples in the following ways.
+
+```{r}
+library(sva)
+```
 
 ### COPD
 
@@ -607,19 +624,19 @@ examine the amount of differential expression between samples with COPD
 and without.
 
 ```{r, message=FALSE}
-library(sva)
-library(limma)
-
 pv <- f.pvalue(assays(se.filt)$logCPM, mod, mod0)
 sum(p.adjust(pv, method="fdr") < 0.05)
+sum(p.adjust(pv, method="fdr") < 0.1)
 ```
 
 We obtain `r sum(p.adjust(pv, method="fdr") < 0.05)` differentially
-expressed (DE) genes at FDR \< 5%. In Figure \@ref(fig:pdistCOPD) below
-we can see the distribution of the resulting p-values.
+expressed (DE) genes at FDR \< 5%, and
+`r sum(p.adjust(pv, method="fdr") < 0.1)` differentially expressed (DE)
+genes at FDR \< 10%, In Figure \@ref(fig:pdistCOPD) below we can see the
+distribution of the resulting p-values.
 
 ```{r pdistCOPD, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between samples with COPD and samples without COPD."}
-hist(pv, main="", las=1)
+hist(pv, main="", las=1, xlab="P-Value")
 ```
 
 We build a table with the subset of
@@ -628,7 +645,7 @@ show the top-10 genes with lowest p-value in Table
 \@ref(tab:DEgenesCOPD) below.
 
 ```{r, message=FALSE}
-mask <- p.adjust(pv, method="fdr") < 0.5
+mask <- p.adjust(pv, method="fdr") < 0.1
 DEgenesEGs <- names(pv)[mask]
 DEgenesSyms <- mcols(se.filt)[DEgenesEGs, "symbol"]
 DEgenesPvalue <- pv[mask]
@@ -669,7 +686,7 @@ write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
 ## into HTML, we need to avoid using the '<' symbol, as in FDR < 10%,
 ## and put its HTML code instead (&lt;)
 ktab <- kable(DEgenesTab, "html", escape=FALSE, row.names=TRUE,
-              caption=sprintf("Differentially expressed genes. Differentially expressed genes between samples with COPD and samples without COPD, with FDR &lt; 5%% (CSV <a href=\"%s\" download>file</a>).",
+              caption=sprintf("Differentially expressed genes. Differentially expressed genes between samples with COPD and samples without COPD, with FDR &lt; 10%% (CSV <a href=\"%s\" download>file</a>).",
                               fnameCSV))
 ktab <- kable_styling(ktab,
                       bootstrap_options=c("stripped", "hover", "responsive"),
@@ -696,12 +713,12 @@ FDR < 10%, and put its HTML code instead (&lt;)
 ```
 ```{r DEgenesCOPD, echo=FALSE}
 ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE, 
-              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between samples with COPD and without COPD with FDR &lt; 5%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
+              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between samples with COPD and without COPD with FDR &lt; 10%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
                               fnameHTML, fnameCSV))
 kable_styling(ktab, position="center")
 ```
 
-### **Histology**
+### Histology
 
 We compare samples that have Dysplasia with samples that don't have
 Dysplasia. We have previously subsetted the data the way we needed.
@@ -709,8 +726,8 @@ Dysplasia. We have previously subsetted the data the way we needed.
 We build now the corresponding full and null model matrices.
 
 ```{r}
-mod <- model.matrix(~ se.filt.dysplasia$dysplasia, colData(se.filt.dysplasia))
-mod0 <- model.matrix(~ 1, colData(se.filt.dysplasia))
+mod <- model.matrix(~ se.filt$dysplasia, colData(se.filt))
+mod0 <- model.matrix(~ 1, colData(se.filt))
 ```
 
 Finally, we conduct the F-test implemented in the package `sva` and
@@ -718,10 +735,7 @@ examine the amount of differential expression between samples with
 Dysplasia and samples with Hyperplasia/Normal samples.
 
 ```{r, message=FALSE}
-library(sva)
-library(limma)
-
-pv <- f.pvalue(assays(se.filt.dysplasia)$logCPM, mod, mod0)
+pv <- f.pvalue(assays(se.filt)$logCPM, mod, mod0)
 sum(p.adjust(pv, method="fdr") < 0.05)
 ```
 
@@ -733,7 +747,7 @@ resulting p-values.
 
 ```{r pdistDysplasia, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between samples with Dysplasia and samples with Hyperplasia/Normal samples."}
 sum(p.adjust(pv, method="fdr") < 0.05)
-hist(pv, main="", las=1)
+hist(pv, main="", las=1, xlab="P-Value")
 ```
 
 We build a table with the subset of
@@ -744,9 +758,9 @@ show the top-10 genes with lowest p-value in Table
 ```{r, message=FALSE}
 mask <- p.adjust(pv, method="fdr") < 0.05
 DEgenesEGs <- names(pv)[mask]
-DEgenesSyms <- mcols(se.filt.dysplasia)[DEgenesEGs, "symbol"]
+DEgenesSyms <- mcols(se.filt)[DEgenesEGs, "symbol"]
 DEgenesPvalue <- pv[mask]
-DEgenesDesc <- mcols(se.filt.dysplasia)[DEgenesEGs, "description"]
+DEgenesDesc <- mcols(se.filt)[DEgenesEGs, "description"]
 DEgenesDesc <- sub(" \\[.+\\]", "", DEgenesDesc)
 DEgenesTab <- data.frame(EntrezID=DEgenesEGs,
                          Symbol=DEgenesSyms,
@@ -815,6 +829,12 @@ ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE,
                               fnameHTML, fnameCSV))
 kable_styling(ktab, position="center")
 ```
+
+We can also see, when comparing both *Distribution of raw p-values for
+an F-test* plots (Figures \@ref(fig:pdistCOPD) and
+\@ref(fig:pdistDysplasia)), that the one corresponding to the Dysplasia
+grouping has a lot more of p-values closer to 0, which suggests that
+grouping will have more DE genes.
 
 # Functional analysis
 
