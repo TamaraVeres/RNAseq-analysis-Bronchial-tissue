@@ -1,5 +1,5 @@
 ---
-title: "IEO Project template"
+title: "IEO Project Analysis"
 author:
 - name: "Radostina Kisleva, Emma Juan Salazar, Tamara-Dora Veres"
   affiliation: Universitat Pompeu Fabra
@@ -134,21 +134,6 @@ devtools::document()
 Both steps, calling `devtools::build_vignettes()` and `devtools::document()`
 have to be done from the root directory of your package.
 
-**IMPORTANT**: This package template is just an example to facilitate getting
-started with R-markdown, illustrate the encapsulation of a data analysis into
-an R package and provide an example of a possible structure of the data analysis
-for the the project. You do *not* have to do the analysis of your dataset
-exactly in the same way as it is done here. Please read carefully the
-description of the project, and its technical requirements to know what you are
-expected to do. In particular, when you carry out the second part of the
-project, you should conduct the differential expression analysis in the way that
-best suits the questions you want to address. You do not need to do the analysis
-in every possible way, just in one way, in the way you think it makes more sense
-to you.
-
-IF YOU THINK AN ANALYSIS OR A DIAGNOSTIC OR A VISUALIZATION
-DOES NOT MAKE SENSE, OR IT IS NOT JUSTIFIED, **YOU SHOULD NOT DO IT**.
-
 # Quality assessment
 
 ## Data import and cleaning
@@ -204,7 +189,7 @@ table(lengths(split(colnames(se), se$geo_accession)))
 
 So, we have `r length(unique(se$geo_accession))` different individual
 samples which matches the number of samples that we have `r ncol(se)`.
-Therefore we don't have any technical replicates and we can proceed wit
+Therefore we don't have any technical replicates and we can proceed with
 the next step.
 
 To proceed further exploring this dataset, we are going to use the
@@ -226,23 +211,6 @@ standarized and normalized representation of gene expression data.
 ```{r}
 assays(se)$logCPM <- cpm(dge, log=TRUE)
 assays(se)$logCPM[1:5, 1:5]
-```
-
-Possible columns we could use for the next step:
-
-```{r}
-# Delete this at the end 
-
-table(se$characteristics_ch1.1) # age or table(se$age.ch1)
-table(se$characteristics_ch1.2) # sex or table(se$Sex.ch1)
-table(se$characteristics_ch1.3) # smoking status (current - former) or table(se$smoking.status.ch1)
-table(se$characteristics_ch1.4) # pack-years (how many cigarettes you have smoked in your lifetime 1 pack = 20 ciggs) or table(se$pack.years.ch1)
-table(se$characteristics_ch1.5) # copd status or table(se$copd.status.ch1)
-table(se$characteristics_ch1.6) # max histology - hyperplasia, metaplasia, mild dysplasia, moderate dysplasia, normal and severe dysplasia or table(se$max.histology.ch1)
-table(se$characteristics_ch1.7) # dysplasia status - dysplasia, NA, normal or table(se$dysplasia.status.ch1)
-table(se$age.ch1) # mean gc content or table(se$mean.gc.content.ch1)
-
-# Delete this at the end
 ```
 
 Let's explore now some of the phenotypic variables. After some visual inspection
@@ -278,9 +246,9 @@ To faciliate working with the pack years variable will split it into four
 categorical groups - Low, Medium, High and Very high. 
 
 To do that we will:
-1. Calculate quartiles for the data.
-2. Assign categories based on quartile ranges.
-3. Convert the values into their corresponding categories.
+1. Calculate quartiles for the data.  
+2. Assign categories based on quartile ranges.  
+3. Convert the values into their corresponding categories.  
 
 
 ```{r}
@@ -325,7 +293,7 @@ kable_styling(ktab, position="center")
 
 ## Sequencing depth
 
-In the following step let's evaluate the sequencing depth in terms of the total number of read counts that are mapped to each sample's genome. The sequencing depth per sample, commonly referred to as library sizes, is displayed in Figure \@ref(fig:libsizes) below with increasing order. 
+In the following step we will evaluate the sequencing depth in terms of the total number of read counts that are mapped to each sample's genome. The sequencing depth per sample, commonly referred to as library sizes, is displayed in Figure \@ref(fig:libsizes) below in increasing order. 
 <!---
 you can control the height and width in pixels of the figure with
 'out.height' and 'out.width'. Figures are automatically numbered,
@@ -345,7 +313,7 @@ legend("topleft", c("Hyperplasia", "Metaplasia", "Mild dysplasia", "Moderate dys
 
 ```
 
-The plot displays a range of sequencing depths for various samples, each represented by an SRR identifier. The sequencing depth across our samples ranges from 20 to 50 million reads, with the majority falling between 30 to 40 million reads. This indicates a generally high level of coverage, which is beneficial for accurate genomic analysis. The plot also suggests that the highest number of reads corresponds to mild and moderate dysplasia, indicating early stages of cellular abnormalities that could potentially progress to cancer. The predominance of mild dysplasia in these samples could be of particular interest for early detection and intervention studies. There does not appear to be any evident bias in terms of sequencing depth across the conditions represented.
+The plot displays a range of sequencing depths for the samples, each represented by an SRR identifier. The sequencing depth across our samples ranges from 20 to 50 million reads, with the majority falling between 30 to 40 million reads. This indicates a generally high level of coverage, which is beneficial for accurate genomic analysis. The plot also suggests that the highest number of reads corresponds to mild and moderate dysplasia, indicating early stages of cellular abnormalities that could potentially progress to cancer. The predominance of mild dysplasia in these samples could be of particular interest for early detection and intervention studies. There does not appear to be any evident bias in terms of sequencing depth across the conditions represented.
 
 
 
@@ -382,12 +350,13 @@ values across genes.
 avgexp <- rowMeans(assays(se)$logCPM)
 hist(avgexp, xlab="log2 CPM", main="", las=1)
 ```
-The histogram displays a bimodal distribution, which means there are two distinct peaks. The large peak to the left is the most prominent feature of the histogram, showing that most genes in this dataset are expressed at low levels or possibly not at all under the conditions of the experiment. On the right part, the peak which indicates that as gene expression levels increase, fewer genes are found at these higher expression levels.
+The histogram displays a bimodal distribution, which means there are two distinct peaks. The large peak to the left is the most prominent feature of the histogram, showing that most genes in this dataset are expressed at low levels or possibly not at all, under the conditions of the experiment. On the right part, the peak which indicates that as gene expression levels increase, fewer genes are found at these higher expression levels.
 
 
 ## Filtering of lowly-expressed genes
 
-Now, let's filter lowly-expressed genes. We calculate row means of expression data and then we apply logical masks. We filter out genes which do not meet certain criteria such as minimum expression levels and a sample sample threshold. This step is needed to refine the dataset and remove noise, ensuring the subsequent analysis is based on high-quality data.
+In order to filter lowly-expressed genes, we calculate row means of expression data and then we apply logical masks. We filter out genes which do not meet certain criteria such as minimum expression levels and a sample threshold. This step is needed to refine the dataset and remove noise, ensuring the subsequent analysis is based on high-quality data. Figure \@ref(fig:lowexpgenes) shows the distribution of those
+values across genes.
 
 ```{r}
 mask <- rowMeans(assays(se)$logCPM) > 1
@@ -404,14 +373,15 @@ mask <- avgexp >= 4 & avgexp <= 10
 se.filt <- se[mask, ]
 dge.filt <- dge[mask, ]
 dim(se.filt)
+```
 
+```{r lowexpgenes, echo=FALSE, out.width="600px", fig.cap="Distribution of lowly-expressed genes."}
 par(mar=c(4, 5, 1, 1))
-  h <- hist(avgexp, xlab=expression("Expression level (" * log[2] * "CPM)"),
+h <- hist(avgexp, xlab=expression("Expression level (" * log[2] * "CPM)"),
             main="", las=1, col="grey", cex.axis=1.2, cex.lab=1.5)
-  x <- cut(rowMeans(assays(se.filt)$logCPM), breaks=h$breaks)
-  lines(h$mids, table(x), type="h", lwd=10, lend=1, col="red")
-  legend("topright", c("All genes", "Filtered genes"), fill=c("grey", "red"))
-
+x <- cut(rowMeans(assays(se.filt)$logCPM), breaks=h$breaks)
+lines(h$mids, table(x), type="h", lwd=10, lend=1, col="red")
+legend("topright", c("All genes", "Filtered genes"), fill=c("grey", "red"))
 ```
 
 We are left with `r nrow(se.filt)` genes.
@@ -436,7 +406,7 @@ assays(se.filt)$logCPM <- cpm(dge.filt, log=TRUE,
 ## MA-plots
 
 We examine now the MA-plots of the normalized expression profiles
-in Figure \@ref(fig:maplots)
+in Figure \@ref(fig:maplots).
 
 <!---
 Here we make a MA-plot for each sample. The options 'fig.height'
@@ -464,7 +434,7 @@ Some plots show a slight dip in the loess line at the lower end of the A scale, 
 
 ## Experimental design and batch identification
 
-To identify potential columns which could introduce variability to batch, we looked at columns that contain information related to technical aspects, experimental conditions or processing details that could vaey between different batches. Here are some columns which we though could introduce unwanted variability: `submission_date`, `last_update_date`, `type`, `channel_count`, `extract_protocol_ch1`, `extract_protocol_ch1.1`, `data_processing`, `data_processing.1`, `data_processing.2`, `data_processing.3`, `data_processing.4`, `data_processing.5`, `data_processing.6`, `platform_id`, `instrument_model`, `library_selection`, `library_source`, `library_strategy`.
+To identify potential columns which could constitute unwanted variability, we looked at columns that contain information related to technical aspects, experimental conditions or processing details that could vary between different batches. Here are some columns which we thought could introduce unwanted variability: `submission_date`, `last_update_date`, `type`, `channel_count`, `extract_protocol_ch1`, `extract_protocol_ch1.1`, `data_processing`, `data_processing.1`, `data_processing.2`, `data_processing.3`, `data_processing.4`, `data_processing.5`, `data_processing.6`, `platform_id`, `instrument_model`, `library_selection`, `library_source`, `library_strategy`.
 
 These variables have the same values across all samples which suggests that they are not contributing to the variability of the dataset. For example:
 ```{r}
@@ -481,7 +451,7 @@ table(se.filt$pack_years, se.filt$histology)
 
 We can see that not all combinations of pack-years and histology have
 been sequenced. Some combinations have missing values, indicated by 0s. However, 
-with only two missing combinations out of the several possible combinations, the
+with only two missing combinations out of the several possible, the
 impact on the overall analysis may be minimal and not critical for the analysis. 
 
 We examine now how samples group together by hierarchical clustering
