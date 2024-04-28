@@ -8,7 +8,7 @@ Description: Provide the IEO project template.
 License: Artistic-2.0
 Encoding: UTF-8
 Depends: R (>= 4.0.0), SummarizedExperiment
-Imports: methods, S4Vectors
+Imports: methods, S4Vectors, magick, limma
 Suggests: BiocStyle, knitr, rmarkdown, usethis, here, kableExtra,
           edgeR, geneplotter, sva, KernSmooth
 VignetteBuilder: knitr
