@@ -256,7 +256,7 @@ se$histology <- factor(se$histology, levels(se$histology) <- c("Hyperplasia", "M
 To faciliate working with the pack years variable will split it into four 
 categorical groups - Low, Medium, High and Very high. 
 
-To do that we will:
+To do that we will:  
 1. Calculate quartiles for the data.  
 2. Assign categories based on quartile ranges.  
 3. Convert the values into their corresponding categories.  
@@ -610,7 +610,7 @@ library(sva)
 ### COPD
 
 We compare samples that have COPD with samples that don't have COPD. We
-have previously subsetted the data the way we needed.
+have previously subset the data the way we needed.
 
 We build now the corresponding full and null model matrices.
 
@@ -721,7 +721,7 @@ kable_styling(ktab, position="center")
 ### Histology
 
 We compare samples that have Dysplasia with samples that don't have
-Dysplasia. We have previously subsetted the data the way we needed.
+Dysplasia. We have previously subset the data the way we needed.
 
 We build now the corresponding full and null model matrices.
 
