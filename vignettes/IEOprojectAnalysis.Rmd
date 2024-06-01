@@ -308,11 +308,15 @@ The histogram displays a bimodal distribution, which means there are two distinc
 
 ## Filtering of lowly-expressed genes
 
-In order to filter lowly-expressed genes, we calculate row means of expression data and then we apply logical masks. We filter out genes which do not meet certain criteria such as minimum expression levels and a sample threshold. This step is needed to refine the dataset and remove noise, ensuring the subsequent analysis is based on high-quality data. Figure \@ref(fig:lowexpgenes) shows the distribution of those
-values across genes.
+To filter out lowly-expressed genes, we first calculate the row means of the expression data and apply a logical mask to remove genes with an average logCPM ≤ 1. This step refines the dataset and removes noise, ensuring subsequent analysis is based on high-quality data.
+
+Next, we calculate a CPM cutoff based on the smallest library size. We check for any missing values in the histology data to ensure data integrity.
+
+We then focus on filtering genes based on their presence in samples with premalignant lesions (PML), specifically those categorized as "Mild dysplasia", "Moderate dysplasia", and "Severe dysplasia". We count the number of PML samples and calculate the CPM for these samples only.
+
+Finally, we apply a logical mask to retain genes that meet the CPM cutoff in at least the number of PML samples. This two-step filtering process is crucial for refining the dataset and focusing the analysis on genes with relevant expression patterns. Figure \@ref(fig:lowexpgenes) shows the distribution of expression values across genes before and after filtering.
 
 ```{r}
-
 mask_initial <- rowMeans(assays(se)$logCPM) > 1
 se_initial_filt <- se[mask_initial, ]
 dge_initial_filt <- dge[mask_initial, ]
@@ -335,9 +339,9 @@ cpm_pml <- cpm(dge_initial_filt)[, pml_indices]
 
 mask_final <- rowSums(cpm_pml > cpmcutoff) >= nsamplescutoff
 sum(mask_final)
-se_final_filt <- se_initial_filt[mask_final, ]
-dge_final_filt <- dge_initial_filt[mask_final, ]
-dim(se_final_filt)
+se.filt <- se_initial_filt[mask_final, ]
+dge.filt <- dge_initial_filt[mask_final, ]
+dim(se.filt)
 ```
 
 ```{r lowexpgenes, echo=FALSE, out.width="600px", fig.cap="Distribution of lowly-expressed genes."}
