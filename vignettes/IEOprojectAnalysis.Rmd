@@ -87,64 +87,6 @@ object with genes mapped to Entrez identifiers. This object also stores
 the phenotypic information about the profiled samples that has been also
 made available at GEO.
 
-## Instructions for navigating the R package.
-
-The directories in this package template follow the structure of an R
-package (consult this [link](http://r-pkgs.had.co.nz) for further
-information) adapted for the purpose of data analysis:
-
--   R: functions to avoid repeating steps and store auxiliary code, used
-    in the vignette.
-
--   vignettes: Rmarkdown document of the data analysis.
-
--   inst/extdata: repository of the data to be analyzed and any other
-    kind of additional functional and annotation data employed during
-    the analysis and which is unavailable through an R package. This
-    directory is moved to the package root directory at install.
-
--   inst/doc: repository for the results of the analysis that we want to
-    provide without having to run the entire analysis again, e.g.,
-    tables of differentially expressed genes. This directory is moved to
-    the package root directory at install, where also the vignettes are
-    installed.
-
--   man: manual pages of functions defined in the R directory that for
-    some reason we want to export from the package.
-
-Every other directory you see in this package has been automatically
-generated in the package building process as, for instance, the `doc`
-directory with the result of the vignette.
-
-When you edit and adapt this vignette for your own data analysis
-project, you should do it in the `.Rmd` file of the `vignettes`
-directory (**not** the one copied to the `doc` directory because this
-one is overwritten during package building and if you edit there **you
-will loose your edits**). To build this vignette without building the
-entire package, you should type the following in the R shell:
-
-```{r, eval=FALSE}
-devtools::build_vignettes()
-```
-
-This function call will build your vignette and copy the resulting HTML
-to the `doc` directory. Thus, to see the result, you should go there and
-open that HTML file.
-
-The rest of the documentation of this package is provided within the
-files of the R directory using
-[roxygen2](https://cran.r-project.org/web/packages/roxygen2/vignettes/roxygen2.html),
-which means that before you build the entire package you have to
-generate the documentation and `NAMESPACE` file typing in the R shell:
-
-```{r, eval=FALSE}
-devtools::document()
-```
-
-Both steps, calling `devtools::build_vignettes()` and
-`devtools::document()` have to be done from the root directory of your
-package.
-
 # Quality assessment
 
 ## Data import and cleaning
@@ -370,29 +312,43 @@ In order to filter lowly-expressed genes, we calculate row means of expression d
 values across genes.
 
 ```{r}
-mask <- rowMeans(assays(se)$logCPM) > 1
-  se.filt <- se[mask, ]
-  dge.filt <- dge[mask, ]
-  dim(se.filt)
-  
-cpmcutoff <- round(10/min(dge$sample$lib.size/1e6), digits=1)
+
+mask_initial <- rowMeans(assays(se)$logCPM) > 1
+se_initial_filt <- se[mask_initial, ]
+dge_initial_filt <- dge[mask_initial, ]
+dim(se_initial_filt)
+
+cpmcutoff <- round(10/min(dge$samples$lib.size/1e6), digits=1)
 cpmcutoff
 
-nsamplescutoff <- 5
+if(any(is.na(se$histology))) {
+  stop("Missing values found in the histology column.")
+}
+
+pml_status <- se$histology %in% c("Mild dysplasia", "Moderate dysplasia", "Severe dysplasia")
+nsamplescutoff <- sum(pml_status)
 nsamplescutoff
-mask <- avgexp >= 4 & avgexp <= 10
-se.filt <- se[mask, ]
-dge.filt <- dge[mask, ]
-dim(se.filt)
+
+pml_indices <- which(pml_status)
+
+cpm_pml <- cpm(dge_initial_filt)[, pml_indices]
+
+mask_final <- rowSums(cpm_pml > cpmcutoff) >= nsamplescutoff
+sum(mask_final)
+se_final_filt <- se_initial_filt[mask_final, ]
+dge_final_filt <- dge_initial_filt[mask_final, ]
+dim(se_final_filt)
 ```
 
 ```{r lowexpgenes, echo=FALSE, out.width="600px", fig.cap="Distribution of lowly-expressed genes."}
 par(mar=c(4, 5, 1, 1))
+avgexp <- rowMeans(assays(se)$logCPM)
 h <- hist(avgexp, xlab=expression("Expression level (" * log[2] * "CPM)"),
-            main="", las=1, col="grey", cex.axis=1.2, cex.lab=1.5)
+          main="", las=1, col="grey", cex.axis=1.2, cex.lab=1.5)
 x <- cut(rowMeans(assays(se.filt)$logCPM), breaks=h$breaks)
 lines(h$mids, table(x), type="h", lwd=10, lend=1, col="red")
 legend("topright", c("All genes", "Filtered genes"), fill=c("grey", "red"))
+
 ```
 
 We are left with `r nrow(se.filt)` genes.
