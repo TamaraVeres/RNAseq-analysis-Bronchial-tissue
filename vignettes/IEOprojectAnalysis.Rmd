@@ -1295,6 +1295,201 @@ ktab <- kable(goresultsDysplasia[1:10, 2:7], "html", escape=FALSE, row.names=TRU
 kable_styling(ktab, position="center")
 ```
 
+## Gene Set Enrichment Analysis
+
+The second part of the functional analysis involves performing Gene Set Enrichment Analysis (GSEA), a computational method used to determine if predefined sets of genes show statistically significant and concordant differences between two biological states (e.g., phenotypes). In our study, we will conduct GSEA for two comparisons: identifying pathways significantly enriched between the presence and absence of premalignant lesions (PMLs) and between current and former smokers.
+
+### GSEA for Dysplasia (PML)
+
+We load the necessary libraries: fgsea for GSEA, GSVAdata for gene set data, and GSEABase for gene set collection handling. We load the c2BroadSets dataset, which contains gene sets from KEGG, REACTOME, and BIOCARTA pathways. 
+```{r}
+library(fgsea)
+library(GSVAdata)
+library(GSEABase)
+data(c2BroadSets)
+
+c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),
+  +                              grep("^REACTOME", names(c2BroadSets)),
+  +                              grep("^BIOCARTA", names(c2BroadSets)))]
+c2BroadSets
+
+```
+
+We create a custom gene set (de_fc_dysplasiaGS) using the Entrez IDs of differentially expressed genes in dysplasia. We then combine this custom gene set with the previously filtered gene sets into a single Gene Set Collection (gsc)
+
+```{r}
+de_fc_dysplasiaGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_dysplasia$EntrezID, setName="DE_FC_DYS")
+details(de_fc_dysplasiaGS)
+gsc <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS))
+gsets <- geneIds(gsc)
+```
+
+We prepare the data by converting the histology information into factors and then into integers.
+
+```{r}
+
+
+histology_factors <- factor(se.filt$histology)
+histology_integers <- as.integer(histology_factors)
+
+levels(histology_factors)
+histology_integers
+```
+
+We use the fgseaLabel function to perform GSEA by permuting phenotypes 10,000 times to compute enrichment scores and p-values for each gene set.
+```{r}
+
+gseapermpheno <- fgseaLabel(gsets, assays(se.filt)$logCPM, histology_integers,10000, minSize=5, maxSize=300)
+head(gseapermpheno[order(gseapermpheno$pval), ])
+
+```
+
+We prepare a ranked list of genes based on their differential expression statistics (tt_dysplasia$t).
+We then use the fgsea function to perform GSEA on this ranked list.
+
+``` {r}
+stats <- tt_dysplasia$t
+names(stats) <- rownames(tt_dysplasia)
+gseapermgsets <- fgsea(gsets, stats, minSize=5, maxSize=300)
+head(gseapermgsets[order(gseapermgsets$pval), ])
+gseapermpheno[gseapermpheno$padj < 0.01, ]
+gseapermgsets[gseapermgsets$padj < 0.01, ]
+```
+
+
+We create histograms of p-values from both GSEA methods (permuting phenotypes and permuting gene sets) to visualize the distribution of p-values.
+We also generate an enrichment plot for the custom gene set DE_FC_DYS to show the enrichment score across the ranked gene list.
+
+```{r}
+par(mfrow=c(1, 2))
+hist(gseapermpheno$pval, xlab="P-value", main="Permuting phenotypes", las=1)
+hist(gseapermgsets$pval, xlab="P-value", main="Permuting gene sets", las=1)
+plotEnrichment(gsets$DE_FC_DYS, stats)
+
+```
+
+We use this part of the code to identify pathways that are significantly enriched (adjusted p-value < 0.01). The plotGseaTable function then generates a table and plot of GSEA results for these significant pathways, showing the enrichment scores and p-values. This helps us visualize and interpret the most relevant pathways in our dysplasia analysis.
+
+```{r}
+DEpwys <- gseapermgsets$pathway[gseapermgsets$padj < 0.01]
+plotGseaTable(gsets[DEpwys], stats, gseapermgsets, gseaParam=0.5)
+
+```
+
+We use the limma::camera function to perform an additional gene set analysis that adjusts for inter-gene correlation within gene sets. This step enhances the robustness of our findings by providing an alternative method to validate the significant pathways identified by GSEA. The camera function uses the same gene sets and design matrix as our previous analyses.
+
+```{r} 
+library(limma)
+gsetidx <- ids2indices(geneIds(gsc), rownames(se.filt))
+camerares <- camera(y=assays(se.filt)$logCPM, index=gsetidx, design=mod, contrast=2)
+head(camerares, 5)
+```
+
+We filter the Camera results to focus on pathways with an FDR < 0.01, ensuring we only consider the most significant pathways. This step helps us further refine our list of relevant pathways.
+
+```{r}
+camerares[camerares$FDR < 0.01, ]
+```
+
+We create a histogram of the p-values from the Camera results to visualize the distribution of significance levels across all tested pathways. This plot provides an overview of the significance of the pathways in relation to dysplasia.
+
+```{r}
+hist(camerares$PValue, xlab="P-value", main="Camera", las=1)
+```
+
+
+### GSEA for Smoking status 
+
+We do the same steps as previously but now for the smoking status.
+Load the required libraries and data.
+
+```{r}
+library(fgsea)
+library(GSVAdata)
+library(GSEABase)
+data(c2BroadSets)
+
+c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),
+  +                              grep("^REACTOME", names(c2BroadSets)),
+  +                              grep("^BIOCARTA", names(c2BroadSets)))]
+c2BroadSets
+```
+
+Create a costum gene set for Smoking status.
+
+```{r}
+
+de_fc_smokerGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_smoker$EntrezID, setName="DE_FC_SMOKER")
+details(de_fc_smokerGS)
+gsc <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS, de_fc_smokerGS))
+gsets <- geneIds(gsc)
+```
+
+Prepare the data. 
+
+```{r}
+histology_factors <- factor(se.filt$histology)
+histology_integers <- as.integer(histology_factors)
+
+levels(histology_factors)
+histology_integers
+
+```
+
+Run the GSEA by permuting phenotypes.
+```{r}
+gseapermpheno <- fgseaLabel(gsets, assays(se.filt)$logCPM, histology_integers,10000, minSize=5, maxSize=300)
+head(gseapermpheno[order(gseapermpheno$pval), ])
+
+```
+
+Run GSEA with the ranked gene list.
+``` {r}
+stats <- tt_smoker$t
+names(stats) <- rownames(tt_dysplasia)
+gseapermgsets <- fgsea(gsets, stats, minSize=5, maxSize=300)
+head(gseapermgsets[order(gseapermgsets$pval), ])
+gseapermpheno[gseapermpheno$padj < 0.01, ]
+gseapermgsets[gseapermgsets$padj < 0.01, ]
+```
+
+Visualize GSEA results.
+```{r}
+par(mfrow=c(1, 2))
+hist(gseapermpheno$pval, xlab="P-value", main="Permuting phenotypes", las=1)
+hist(gseapermgsets$pval, xlab="P-value", main="Permuting gene sets", las=1)
+plotEnrichment(gsets$DE_FC_SMOKER, stats)
+
+```
+
+Identify significant pathways.
+
+```{r}
+DEpwys <- gseapermgsets$pathway[gseapermgsets$padj < 0.01]
+plotGseaTable(gsets[DEpwys], stats, gseapermgsets, gseaParam=0.5)
+
+```
+
+Additional validation using Camera.
+
+```{r} 
+library(limma)
+gsetidx <- ids2indices(geneIds(gsc), rownames(se.filt))
+camerares <- camera(y=assays(se.filt)$logCPM, index=gsetidx, design=mod, contrast=2)
+head(camerares, 5)
+```
+
+Filter significant pathways from Camera.
+
+```{r}
+camerares[camerares$FDR < 0.01, ]
+```
+
+Visualise significant pathways from Camera for Smoking status.
+```{r}
+hist(camerares$PValue, xlab="P-value", main="Camera", las=1)
+```
+
 # Discussion
 
 Here we discuss the findings.
