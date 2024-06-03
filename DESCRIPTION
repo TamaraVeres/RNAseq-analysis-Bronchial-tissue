@@ -10,6 +10,6 @@ Encoding: UTF-8
 Depends: R (>= 4.0.0), SummarizedExperiment
 Imports: methods, S4Vectors, magick, limma
 Suggests: BiocStyle, knitr, rmarkdown, usethis, here, kableExtra,
-          edgeR, geneplotter, sva, KernSmooth, ggplot, RColorBrewer
+          edgeR, geneplotter, sva, KernSmooth, ggplot2, RColorBrewer
 VignetteBuilder: knitr
 RoxygenNote: 7.3.1
