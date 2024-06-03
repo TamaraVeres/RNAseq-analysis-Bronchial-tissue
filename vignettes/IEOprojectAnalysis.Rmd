@@ -1492,7 +1492,54 @@ hist(camerares$PValue, xlab="P-value", main="Camera", las=1)
 
 # Discussion
 
-Here we discuss the findings.
+## Current vs Former Smoker Results
+
+### Go Ontology
+
+The Go terms with the highest Odds Ratio were tryptophan transport, valine transport and peptidyl-aspartic acid modification. This suggests that these processes are significantly different between current and former smokers.
+
+Tryptophan Transport (GO:0015827): Tryptophan is a precursor to serotonin, a neurotransmitter involved in mood regulation. Smoking has been associated with altered serotonin levels and mood disorders.
+Current smokers might have different tryptophan transport dynamics due to chronic exposure to nicotine, which could affect neurotransmitter synthesis and mental health, whereas former smokers might show a return to baseline levels.
+
+Valine Transport (GO:0015829): Valine is a branched-chain amino acid (BCAA) important for muscle metabolism and energy production. Smoking affects metabolic processes and energy balance.
+The differences in valine transport could reflect altered energy metabolism in current smokers, who may experience metabolic stress due to smoking-related oxidative damage.
+
+Peptidyl-Aspartic Acid Modification (GO:0018197): Post-translational modifications of proteins are crucial for their function. Smoking can induce oxidative stress, leading to changes in protein modification.
+Current smokers might have altered post-translational modifications due to the high oxidative stress from smoking, affecting protein function and cellular processes.
+
+Terpenoid Catabolic Process (GO:0016115): When it comes to Terpenoid Catabolic Process (GO:0016115), terpenoids include many bioactive compounds, some of which are found in tobacco smoke. The metabolism of these compounds is critical for detoxification. Current smokers may exhibit increased catabolism of terpenoids as their bodies work to break down harmful components of tobacco smoke, whereas former smokers may show reduced activity as the exposure decreases.
+
+Daunorubicin Metabolic Process (GO:0044597) and Doxorubicin Metabolic Process (GO:0044598): Daunorubicin and doxorubicin are metabolized in the body and smoking is known to influence drug metabolism. The differences observed could indicate that current smokers have altered drug metabolism capabilities, which might affect the efficacy and toxicity of medications compared to former smokers. 
+
+Sinoatrial Node Development (GO:0003163): The sinoatrial node is critical for heart rhythm regulation, and smoking is a known risk factor for cardiovascular diseases.
+Current smokers might exhibit changes in the development or function of the sinoatrial node, possibly due to chronic cardiovascular stress and exposure to harmful substances in smoke.
+
+Taurine Transport (GO:0015734): Taurine plays a role in cellular osmoregulation, bile salt formation, and antioxidation. Smoking affects many of these physiological processes. Differences in taurine transport could reflect adaptations to oxidative stress and altered bile acid metabolism in current smokers compared to former smokers.
+
+Isoleucine Transport (GO:0015820): Isoleucine, like valine, is a BCAA important for protein synthesis and energy metabolism. Smoking impacts overall metabolic health.
+Altered transport of isoleucine in current smokers might be a response to the increased metabolic demands and stress associated with chronic smoking.
+
+Thyroid Hormone Transport (GO:0070327): Thyroid hormones regulate metabolism, and smoking has been linked to changes in thyroid function.
+The differences in thyroid hormone transport could indicate that smoking affects the regulation and distribution of these hormones, impacting metabolic processes and overall health.
+
+## Dysplasia vs No Dysplasia Results
+
+7-methylguanosine cap hypermethylation (GO:0036261): This process is related to the modification of the mRNA cap structure, which is crucial for mRNA stability and translation. Smoking can induce changes in RNA processing and stability, potentially through increased oxidative stress and inflammation. These changes could lead to dysregulation of gene expression, contributing to dysplasia.
+
+Negative regulation of protein neddylation (GO:2000435): Neddylation is a post-translational modification affecting protein stability and function.
+Dysregulation of protein modifications, including neddylation, can be influenced by the cellular stress and inflammatory response induced by smoking. This could lead to altered protein function and contribute to the pathogenesis of dysplasia.
+
+Cytoplasmic translation (GO:0002181): Involves the synthesis of proteins in the cytoplasm.Smoking can affect protein synthesis by inducing endoplasmic reticulum stress and disrupting ribosomal function. Changes in protein synthesis are often seen in cancer and precancerous conditions like dysplasia.
+
+Mitochondrial electron transport, cytochrome c to oxygen (GO:0006123) & ubiquinol to cytochrome c (GO:0006122): Part of the mitochondrial respiratory chain involved in energy production. Smoking increases oxidative stress, which can damage mitochondria and impair electron transport. Mitochondrial dysfunction is a known factor in the development of many diseases, including cancer and dysplasia.
+
+Positive regulation of miRNA catabolic process (GO:2000627): miRNAs are small non-coding RNAs that regulate gene expression post-transcriptionally. Smoking can alter miRNA expression profiles, contributing to changes in gene regulation that can lead to dysplasia and cancer.
+
+Proton motive force-driven ATP synthesis (GO:0015986): This process is a part of cellular respiration where ATP is produced. Mitochondrial dysfunction due to smoking can disrupt ATP synthesis, leading to cellular energy deficits and promoting disease processes like dysplasia.
+
+Protein maturation by [4Fe-4S] cluster transfer (GO:0106035): This involves the assembly of iron-sulfur clusters, which are essential for various cellular processes, including DNA repair and electron transport. Oxidative stress from smoking can impair iron-sulfur cluster assembly, leading to defects in cellular metabolism and potentially contributing to dysplasia.
+
+Ribosomal small subunit assembly (GO:0000028) & Ribosomal small subunit biogenesis (GO:0042274): These are critical for the formation of functional ribosomes, which are essential for protein synthesis. Disruption in ribosome biogenesis can be caused by smoking-related oxidative stress and inflammation, affecting protein synthesis and cell growth, potentially leading to dysplasia.
 
 # Conclusions
 
