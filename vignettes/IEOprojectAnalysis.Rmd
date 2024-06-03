@@ -121,15 +121,32 @@ head(rowData(se))
 ```
 Among this information, the gene symbol and description are potentially
 useful for interpreting results of, for instance, a differential
-expression analysis. Let's explore now the column (phenotypic) data.
+expression analysis.
+
+### Exploratory Data Analysis
+
+Let's explore now the information we have for the samples: phenotypic
+and technical data.
+
+Doing EDA will allow us to identify how many phenotypic variables we
+have, the technical variables, and see what could interest us later for
+Experimental Design.
 
 ```{r}
 dim(colData(se))
 head(colData(se), n=3)
 ```
 
-We have a total of `r ncol(colData(se))` phenotypic variables. The
-second column `geo_accession` contains GEO Sample Accession Number
+We have a total of `r ncol(colData(se))` phenotypic variables.
+
+A first approach can be to simply analyze all of the column names to get
+a first sense of what we have:
+
+```{r}
+colnames(colData(se))
+```
+
+The second column `geo_accession` contains GEO Sample Accession Number
 ([GSM](https://www.ncbi.nlm.nih.gov/geo/info/overview.html)) identifers.
 GSM identifiers define individual samples, understood in our context as
 individual sources of RNA. We can check if we have any technical replicates
@@ -166,33 +183,101 @@ assays(se)$logCPM <- cpm(dge, log=TRUE)
 assays(se)$logCPM[1:5, 1:5]
 ```
 
-Let's explore now some of the phenotypic variables. After some visual inspection
-of the variables, we find out that the variable `se$characteristics_ch1.4` contains
-information about how many cigarettes a person has smoked in their lifetime.
-We also have a variable which tells us whether the person has COPD 
-(Chronic obstructive pulmonary disease) or not `se$characteristics_ch1.5`.
+Let's explore now some of the phenotypic variables.
+
+To identify the columns that will be useful to us, we have to see the
+length of the levels of each variable (how many unique values there are)
+to see what can be used to make groups of samples. If a variable has 81
+levels, or only 1, we are not interested in it. Therefore we want to
+obtain a list of all the columns that have a different number than
+those.
 
 ```{r}
-table(se$characteristics_ch1.4)
-table(se$characteristics_ch1.5)
+interesting_se <- data.frame(row.names=se$title)
+technical_se <- data.frame(row.names=se$title)
+for(column in colnames(colData(se))){
+  se[[column]] <- factor(se[[column]])
+  if(length(levels(se[[column]]))>1 && length(levels(se[[column]]))<81){
+    interesting_se[[column]] <- se[[column]]
+  } else{
+    technical_se[[column]] <- se[[column]]
+  }
+}
 ```
 
-Another variable of interest could be max histology `se$characteristics_ch1.6` which 
-represents the different histology types (tissue characteristics).
+We can now look at the levels of each of these variables to see what
+type of data they offer
 
 ```{r}
-table(se$characteristics_ch1.6)
+head(interesting_se)
 ```
+
+We can see we have the following 8 phenotypic (or environmental)
+variables (some information is repeated):
+
+**Age** (characteristics_ch1.1)
+
+**Sex** (characteristics_ch1.2)
+
+**Smoking status** (characteristics_ch1.3): Current smoker or Former
+smoker
+
+**Pack years** (characteristics_ch1.4): how many cigarettes a person has
+smoked in their lifetime
+
+**COPD Status** (characteristics_ch1.1): Chronic obstructive pulmonary
+disease
+
+**Mean GC Content** (characteristics_ch1.18)
+
+**Max Histology** (characteristics_ch1.6): Histology types (tissue
+characteristics)
+
+-   This variable determines what they'll call dysplasia status (see
+    next variable). Histology is used to determine wether a sample has
+    Premalignant Lesions or not, the two main groups of the paper.
+    -   The PML group (**dysplasia**) includes samples that had:
+
+        -   Mild Dysplasia
+
+        -   Moderate Dysplasia
+
+        -   Severe Dysplasia
+
+    -   The No PML group (**no dysplasia**) includes samples that had:
+
+        -   Hyperplasia
+
+        -   Normal histology
+
+    -   Samples that had **metaplasia** were excluded from the analysis
+
+**Dysplasia Status** (characteristics_ch1.7)
+
+-   Dysplasia -\> PML
+
+-   No Dysplasia -\> No PML
+
+-   Metaplasia -\> excluded
 
 To facilitate handling this variables we are going to perform the following
 modifications:
 
 ```{r}
+se$sex <- gsub("Sex: ", "", se$characteristics_ch1.2)
+se$sex <- factor(se$sex, levels = c("Male", "Female"))
+
+se$smoker <- gsub("smoking status: ", "", se$characteristics_ch1.3)
+se$smoker <- factor(se$smoker, levels = c("Current smoker", "Former smoker"))
+
 se$copd_status <- gsub("copd status: ", "", se$characteristics_ch1.5)
 se$copd_status <- factor(se$copd_status, levels = c("COPD", "No COPD"))
 
 se$histology <- gsub("max histology: ", "", se$characteristics_ch1.6)
 se$histology <- factor(se$histology, levels(se$histology) <- c("Hyperplasia", "Metaplasia", "Mild dysplasia", "Moderate dysplasia", "Normal", "Severe dysplasia"))
+
+se$dysplasia <- gsub("Subject L.*, ", "", se$title)
+se$dysplasia <- factor(se$dysplasia)
 ```
 
 To faciliate working with the pack years variable will split it into four 
@@ -210,7 +295,6 @@ class(se$characteristics_ch1.4)
 se$characteristics_ch1.4 <- as.numeric(se$characteristics_ch1.4)
 
 quartiles <- quantile(se$characteristics_ch1.4, probs = c(0.25, 0.5, 0.75))
-
 ```
 
 Now that we have the quartiles, we can proceed to assign categories to the values based on these quartiles.
@@ -230,15 +314,55 @@ se$pack_years <- cut(se$characteristics_ch1.4,
 
 ```
 
-In Table \@ref(tab:pheno) below, we show the three variables of interest
-(histology, COPD status and pack years) jointly to gather as much understanding as
-possible on the underlying experimental design.
+To faciiate working with the age variable, we'll split it into four
+intervals
+
+To do that we will:\
+1. Calculate quartiles for the data.\
+2. Assign categories based on quartile ranges.\
+3. Convert the values into their corresponding categories.
+
+```{r}
+
+se$age <- gsub("age: ", "", se$characteristics_ch1.1)
+class(se$age)
+se$age <- as.numeric(se$age)
+
+quartiles <- quantile(se$age, probs = c(0.25, 0.5, 0.75))
+quartiles
+
+```
+
+Now that we have the quartiles, we can proceed to assign categories to
+the values based on these quartiles.
+
+Values below the first quartile (Q1) will be categorized as "low."
+Values between Q1 and the median (Q2) will be categorized as "medium."
+Values between the median (Q2) and the third quartile (Q3) will be
+categorized as "high." Values above the third quartile (Q3) will be
+categorized as "very high."
+
+```{r}
+se$age_intervals <- cut(se$age,
+                          breaks = c(-Inf, quartiles[1], quartiles[2], quartiles[3], Inf),
+                          labels = c("to 58", "to 64", "to 69", "+ 69"),
+                          include.lowest = TRUE)
+
+```
+In Table \@ref(tab:pheno) below, we show the five variables of interest
+(smoker status, pack years, histology, dysplasia and COPD status)
+jointly to gather as much understanding as possible on the underlying
+experimental design.
 
 ```{r pheno, echo=FALSE, message=FALSE}
-tmpdf <- data.frame("Identifer"=colnames(se),
+tmpdf <- data.frame(Identifer=colnames(se),
+                    Age=se$age_intervals,
+                    Sex=se$sex,
+                    "Smoker status"=se$smoker,
                     "Pack Years"=se$pack_years,
-                    Histology=se$histology,
                     "COPD Status"=se$copd_status,
+                    Histology=se$histology,
+                    Dysplasia=se$dysplasia,
                     check.names=FALSE)
 ktab <- kable(tmpdf, caption="Phenotypic variables.")
 kable_styling(ktab, position="center")
@@ -405,7 +529,16 @@ Some plots show a slight dip in the loess line at the lower end of the A scale, 
 
 ## Experimental design and batch identification
 
-To identify potential columns which could constitute unwanted variability, we looked at columns that contain information related to technical aspects, experimental conditions or processing details that could vary between different batches. Here are some columns which we thought could introduce unwanted variability: `submission_date`, `last_update_date`, `type`, `channel_count`, `extract_protocol_ch1`, `extract_protocol_ch1.1`, `data_processing`, `data_processing.1`, `data_processing.2`, `data_processing.3`, `data_processing.4`, `data_processing.5`, `data_processing.6`, `platform_id`, `instrument_model`, `library_selection`, `library_source`, `library_strategy`.
+To identify potential columns which could constitute unwanted variability, we looked at columns that contain information related to technical aspects, experimental conditions or processing details that could vary between different batches. 
+
+When doing EDA, we created a dataframe with all the phenotypical
+variables, and another with all the technical ones.
+
+```{r}
+head(technical_se)
+```
+
+Here are some columns which we thought could introduce unwanted variability: `submission_date`, `last_update_date`, `type`, `channel_count`, `extract_protocol_ch1`, `extract_protocol_ch1.1`, `data_processing`, `data_processing.1`, `data_processing.2`, `data_processing.3`, `data_processing.4`, `data_processing.5`, `data_processing.6`, `platform_id`, `instrument_model`, `library_selection`, `library_source`, `library_strategy`.
 
 These variables have the same values across all samples which suggests that they are not contributing to the variability of the dataset. For example:
 ```{r}
@@ -414,22 +547,89 @@ table(se.filt$histology, se.filt$library_strategy)
 
 There is perfect correlation between library strategy and histology. This means that differences between our samples will be due to biological differences rather than technical. 
 
-Now let's examine the distribution between pack-years and histology.
+We can discard all of the variables that have the same value across all
+samples:
 
 ```{r}
-table(se.filt$pack_years, se.filt$histology)
+for(column in colnames(technical_se)){
+  if(length(levels(technical_se[[column]]))==1){
+    technical_se[[column]] <- NULL
+  }
+}
+head(technical_se)
+```
+
+The rest of the variables are related to technical aspects
+related to the sequencing that's specific to every sample, therefore we can discard them as sources of unwanted variability.
+
+### Phenotypical Variables
+
+We have to now take a look at how our phenotypical variables interact
+and wether they might explain any sample clustering we may find, to help
+us make a decision on what groups to choose for our DE analysis and
+their covariates,
+
+First, let's examine the distribution between **dysplasia** (our outcome
+of interest, seeing as the paper's goal is to find DE genes between
+samples with PML and without) and [histology]{.underline}.
+
+```{r}
+table(se.filt$dysplasia, se.filt$histology)
+```
+
+This is a very obvious result, since we know dysplasia was drawin from
+the histology variable. This is a great example of combinations that
+aren't sequenced (in this case, because they can't exist.)
+
+It may be more interesting to see what happens between our outcome of
+interest and variables that are independent from it.
+
+We can also examine the distribution between histology and our other
+phenotypic variables
+
+```{r}
+table(se.filt$histology, se.filt$age_intervals)
+table(se.filt$histology, se.filt$sex)
+table(se.filt$histology, se.filt$pack_years)
+table(se.filt$histology, se.filt$copd_status)
 ```
 
 We can see that not all combinations of pack-years and histology have
-been sequenced. Some combinations have missing values, indicated by 0s. However, 
-with only two missing combinations out of the several possible, the
-impact on the overall analysis may be minimal and not critical for the analysis. 
+been sequenced. Some combinations have missing values, indicated by 0s.
 
-We examine now how samples group together by hierarchical clustering
-and multidimensional scaling, annotating pack-years and histology. We
-calculate again log CPM values with a high prior count(3) to moderate extreme
-fold-changes produced by low counts. The resulting dendrogram is shown in
-Figure \@ref(fig:sampleClustering).
+It's interesting to note that the 0s indicate some interesting remarks:
+
+-   Groups like low or medium pack years (people that have smoked less
+    cigarettes over the course of their lives) have no samples with
+    severe dysplasia, meaning severe detriment to their bronchial
+    tissue.
+
+-   There's also no females with severe dysplasia.
+
+-   And the severe dysplasia group also lacks samples on the younger age
+    interval.
+
+The distribution we're interested in, however, is the one between these
+phenotypic variables and the Dysplasia variable (same concept as
+histology, but grouped in three groups)
+
+```{r}
+table(se.filt$dysplasia, se.filt$age_intervals)
+table(se.filt$dysplasia, se.filt$sex)
+table(se.filt$dysplasia, se.filt$pack_years)
+table(se.filt$dysplasia, se.filt$copd_status)
+```
+
+We can see that we have sequences for all of these different
+combinations.
+
+### Hierarchical Clustering
+
+We examine now how samples group together by hierarchical clustering and
+multidimensional scaling, annotating pack-years and histology. We
+calculate again log CPM values with a high prior count (3) to moderate
+extreme fold-changes produced by low counts. The resulting dendrogram is
+shown in Figure \@ref(fig:sampleClustering).
 
 ```{r sampleClustering, fig.height=8, fig.width=10, dpi=100, echo=FALSE, fig.cap="Figure S6: Hierarchical clustering of the samples. Labels correspond to pack-years and sample identifer, while colors indicate histology groups."}
 logCPM <- cpm(dge.filt, log=TRUE, prior.count=3)
@@ -438,67 +638,274 @@ sampleClustering <- hclust(d)
 batch <- as.integer(se.filt$histology)
 sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
 names(batch) <- colnames(se.filt)
-outcome <- paste(se.filt$pack_years, colnames(se), sep="\n")
+outcome <- paste(se.filt$dysplasia)
 names(outcome) <- colnames(se.filt)
 sampleDendrogram <- dendrapply(sampleDendrogram,
-                               function(x, batch, labels) {
-                                 if (is.leaf(x)) {
-                                   attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x, "label")]))
-                                   attr(x, "label") <- as.vector(labels[attr(x, "label")])
-                                 }
-                                 x
-                               }, batch, outcome)
-plot(sampleDendrogram, main="Hierarchical clustering of samples",
-     cex=1)
+function(x, batch, labels) {
+  if (is.leaf(x)) {
+    attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x,"label")]))
+    attr(x, "label") <- as.vector(labels[attr(x, "label")])
+    }
+  x
+  }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples", cex=1)
 legend("topright", levels(se.filt$histology),
        fill=seq_len(nlevels(se.filt$histology)))
 
 ```
 
-Samples are linked together based on their similarity, with the branches connecting those most similar first. As we move up the tree, the connections represent progressively less similar groups until all are joined in a single cluster. Samples do not really cluster together by histology type, which means histology type is not the primary factor driving the similarity or dissimilarity between samples.
+Samples are linked together based on their similarity, with the branches
+connecting those most similar first. As we move up the tree, the
+connections represent progressively less similar groups until all are
+joined in a single cluster. Samples do not really cluster together by
+histology type, which means histology type is not the primary factor
+driving the similarity or dissimilarity between samples.
 
-In Figure \@ref(fig:mdsPlot) we show the
-corresponding MDS plot.
+If we look more closely at the labels, we can also see even if we look
+at clustering through the 3 dysplasia groups instead of all 6 histology
+groups, there is still no clear clustering.
+
+We can now try to identify a phenotypical variable that will justify
+clustering
+
+```{r}
+# Age plot
+batch <- as.integer(se.filt$age_intervals)
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$dysplasia)
+names(outcome) <- colnames(se.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+function(x, batch, labels) {
+  if (is.leaf(x)) {
+    attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x,"label")]))
+    attr(x, "label") <- as.vector(labels[attr(x, "label")])
+    }
+  x
+  }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples - Age", cex=1)
+legend("topright", levels(se.filt$age_intervals),
+       fill=seq_len(nlevels(se.filt$age_intervals)))
+
+# Sex plot
+batch <- as.integer(se.filt$sex)
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$dysplasia)
+names(outcome) <- colnames(se.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+function(x, batch, labels) {
+  if (is.leaf(x)) {
+    attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x,"label")]))
+    attr(x, "label") <- as.vector(labels[attr(x, "label")])
+    }
+  x
+  }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples - Sex", cex=1)
+legend("topright", levels(se.filt$sex),
+       fill=seq_len(nlevels(se.filt$sex)))
+
+# COPD plot
+batch <- as.integer(se.filt$age_intervals)
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$dysplasia)
+names(outcome) <- colnames(se.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+function(x, batch, labels) {
+  if (is.leaf(x)) {
+    attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x,"label")]))
+    attr(x, "label") <- as.vector(labels[attr(x, "label")])
+    }
+  x
+  }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples - COPD", cex=1)
+legend("topright", levels(se.filt$age_intervals),
+       fill=seq_len(nlevels(se.filt$age_intervals)))
+
+# Smoking status
+batch <- as.integer(se.filt$smoker)
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$dysplasia)
+names(outcome) <- colnames(se.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+function(x, batch, labels) {
+  if (is.leaf(x)) {
+    attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x,"label")]))
+    attr(x, "label") <- as.vector(labels[attr(x, "label")])
+    }
+  x
+  }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples - Smoking status", cex=1)
+legend("topright", levels(se.filt$smoker),
+       fill=seq_len(nlevels(se.filt$smoker)))
+
+# Pack years
+batch <- as.integer(se.filt$pack_years)
+sampleDendrogram <- as.dendrogram(sampleClustering, hang=0.1)
+names(batch) <- colnames(se.filt)
+outcome <- paste(se.filt$dysplasia)
+names(outcome) <- colnames(se.filt)
+sampleDendrogram <- dendrapply(sampleDendrogram,
+function(x, batch, labels) {
+  if (is.leaf(x)) {
+    attr(x, "nodePar") <- list(lab.col=as.vector(batch[attr(x,"label")]))
+    attr(x, "label") <- as.vector(labels[attr(x, "label")])
+    }
+  x
+  }, batch, outcome)
+plot(sampleDendrogram, main="Hierarchical clustering of samples - Pack Years", cex=1)
+legend("topright", levels(se.filt$pack_years),
+       fill=seq_len(nlevels(se.filt$pack_years)))
+```
+
+No clustering is evident in any of the resulting plots except for
+Smoking Status, where we can see some clustering between the two
+categories: Current smoker vs. Former smoker. A different plot may give
+us more insight into these clusters.
+
+In Figure \@ref(fig:mdsPlot) we show the corresponding MDS plot for the
+Smoking status variable.
 
 ```{r mdsPlot, fig.height=5, fig.width=8, dpi=100, echo=FALSE, fig.cap="Figure S7: Multidimensional scaling plot of the samples. Labels correspond to treatment and colors indicate sample group."}
-outcome <- se.filt$pack_years
+library(ggplot2)
+library(RColorBrewer)
+
+outcome <- se.filt$smoker
+outcome2 <- se.filt$dysplasia
 names(outcome) <- colnames(se.filt)
-plotMDS(dge.filt, labels=outcome, col=batch)
-legend("bottomleft", levels(se.filt$histology),
-       fill=seq_len(nlevels(se.filt$histology)), inset=0.05)
+palette <- brewer.pal(3, "Set2")
+
+plotMDS(dge.filt, labels=outcome2, col=palette[as.numeric(outcome)])
+legend("bottomleft",
+       levels(se.filt$smoker),
+       fill=palette[seq_len(nlevels(outcome))],
+       inset=0.05)
 ```
+
+We can distinguish more clearly that there are indeed two clusters, one
+for Current smokers and another for Former smokers. This leads us to
+assume these two groups have significant differences in their gene
+expression.
 
 # Differential expression
 
-We can do an analysis to observe differential expression based on the
-two following groupings:
+The next step is to do a Differential Expression Analysis. At first
+we'll simply use fold-change values to get a first glance at
+differentially expressed genes, and we'll follow that by DE through
+linear regression. We chose to do two separate DE Analysis, based on the
+following variables:
 
-***Histology***
+**PML (Premalignant Lesions)**
 
-We can separate the samples' Max. Histology in two groups: Dysplasia vs.
-No Dysplasia.
+Samples with dysplasia vs. samples with no dysplasia.
 
-The *No Dysplasia* group will contain all samples that are Normal, have
-Hyperplasia or Metaplasia.
+The goal of this DE is to reproduce the findings in the paper
 
-The *Dysplasia* group will contain all samples with Dysplasia: Mild
-Dysplasia, Moderate dysplasia and Severe dysplasia
+**Smoking status**
 
-***COPD***
+From the clustering we've been able to tell there is a clear difference
+between current smokers and former smokers. We think it's meaningful
+enough to warrant doing another Differentian Expression Analysis
 
-(Chronic obstructive pulmonary disease)
-
-Samples with COPD vs. samples without COPD
-
-## Analysing Fold-Change
+## Fold Change to Analyze Differential Expression
 
 In first instance, a simple way to find Differentially Expressed genes
 is to simply compare expression levels between the two groups of
 samples.
 
 We can do this using **fold-change**, which compares the mean read
-counts using the logarithmic scale to try and stabilize variability
-across expression levels.
+counts (using the logarithmic scale to try and stabilize variability
+across expression levels).
+
+We'll see how many genes change their expression between the two groups
+using two different classifications.
+
+### PML (Dysplasia)
+
+The two main groups we want to crontrast are samples with premalignant
+legions (PML) and samples without them. Thas is why our oucome target is
+Dysplasia.
+
+```{r}
+no_dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="no dysplasia"])
+dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="dysplasia"])
+```
+
+We can now calculate fold-change values for each gene in these two
+groups.
+
+```{r}
+log2fc_dysplasia <- dysplasia - no_dysplasia
+ranking <- order(abs(log2fc_dysplasia), decreasing=TRUE)
+fold_change_dysplasia <- data.frame(EntrezID=names(log2fc_dysplasia[ranking]),
+                                    Log2FC=round(log2fc_dysplasia[ranking], digits=3),
+                                    FC=round(2^log2fc_dysplasia[ranking], digits=3),
+                                    "1/FC"=round(2^(-log2fc_dysplasia[ranking]), digits=3),
+                                    row.names=rowData(se.filt)$symbol[ranking],
+                                    check.names=FALSE)
+de_fc_dysplasia <- head(fold_change_dysplasia, n=10)
+de_fc_dysplasia
+```
+
+In the resulting Data Frame:
+
+-   If a gene has a **positive** Log2FC value, it means said gene is
+    **FC** times more upregulated in samples with *Dysplasia* compared
+    to in samples *without Dysplasia*.
+
+-   If a gene has a **negative** Log2FC value, it means said gene is
+    **1/FC** times more upregulated in patients *without Dysplasia*
+    compared to in patients with *Dysplasia*
+
+    -   For example, CLDN18 is more upregulated in samples with
+        Dysplasia than in samples without Dysplasia
+
+### Smoking status
+
+Our two groups of samples are: samples with COPD and samples with No
+COPD. We calculate the means of the values of the expression levels.
+
+```{r}
+current <- rowMeans(logCPM[, se.filt$smoker=="Current smoker"])
+former <- rowMeans(logCPM[, se.filt$smoker=="Former smoker"])
+```
+
+We can now calculate fold-change values for each gene in these two
+groups. We'll rank the genes by decreasing absolute value of Fold
+Change, and we'll call differentially expressed genes those that are at
+the top 10.
+
+```{r}
+log2fc_smoker <- current - former
+ranking <- order(abs(log2fc_smoker), decreasing=TRUE)
+fold_change_smoker <- data.frame(EntrezID=names(log2fc_smoker[ranking]),
+                                    Log2FC=round(log2fc_smoker[ranking], digits=3),
+                                    FC=round(2^log2fc_smoker[ranking], digits=3),
+                                    "1/FC"=round(2^(-log2fc_smoker[ranking]), digits=3),
+                                    row.names=rowData(se.filt)$symbol[ranking],
+                                    check.names=FALSE)
+de_fc_smoker <- head(fold_change_smoker, n=10)
+de_fc_smoker
+```
+
+In the resulting Data Frame:
+
+-   If a gene has a **positive** Log2FC value, it means said gene is
+    **FC** times more upregulated in samples that are *Current smokers*
+    compared to in samples that are *Former smokers*.
+
+    -   For example, AKR1B10 is [**26 times more
+        upregulated**]{.underline} in samples that are Current smokers
+        than in samples that are Former smokers
+
+-   If a gene has a **negative** Log2FC value, it means said gene is
+    **1/FC** times more upregulated in samples that are *Former smokers*
+    compared to in samples that are *Current smokers*.
+
+We can clearly see the difference of expression between groups is larger
+with the smoking status distinction than the dysplasia one.
 
 ### COPD
 
@@ -510,291 +917,259 @@ copd <- rowMeans(logCPM[, se.filt$copd_status=="COPD"])
 no_copd <- rowMeans(logCPM[, se.filt$copd_status=="No COPD"])
 ```
 
-Now we can build two plots to compare fold-change between the two groups
-(Figure \@ref(fig:foldCOPD)).
-
-```{r foldCOPD, fig.cap="Plot analysing the difference in expression between samples with and without COPD."}
-par(mfrow=c(1, 2))
-plot(copd, no_copd, xlab="COPD", ylab="No COPD", pch=".", cex=4, las=1)
-plot((copd+no_copd)/2, copd-no_copd, xlab="(COPD + No COPD)/2", ylab="COPD - No COPD", pch=".", cex=4, las=1)
-```
-
-### Histology
-
-Our two groups of samples are No Dysplasia and Dysplasia. We create a
-new column in our SE to dichotomize the histology. We assign "Normal",
-"Hyperplasia" and "Metaplasia" to the **No Dysplasia** group, and we
-assign "Mild dysplasia", "Moderate dysplasia", and "Severe dysplasia" to
-the **Dysplasia** group
+We can now calculate fold-change values for each gene in these two
+groups. We'll rank the genes by decreasing absolute value of Fold
+Change, and we'll call differentially expressed genes those that are at
+the top 10.
 
 ```{r}
-se.filt$dysplasia[se.filt$histology == "Normal"] <- "No Dysplasia"
-se.filt$dysplasia[se.filt$histology == "Hyperplasia"] <- "No Dysplasia"
-se.filt$dysplasia[se.filt$histology == "Metaplasia"] <- "No Dysplasia"
-se.filt$dysplasia[se.filt$histology == "Mild dysplasia"] <- "Dysplasia"
-se.filt$dysplasia[se.filt$histology == "Moderate dysplasia"] <- "Dysplasia"
-se.filt$dysplasia[se.filt$histology == "Severe dysplasia"] <- "Dysplasia"
+log2fc_copd <- copd - no_copd
+ranking <- order(abs(log2fc_copd), decreasing=TRUE)
+fold_change_copd <- data.frame(EntrezID=names(log2fc_copd[ranking]),
+                                    Log2FC=round(log2fc_copd[ranking], digits=3),
+                                    FC=round(2^log2fc_copd[ranking], digits=3),
+                                    "1/FC"=round(2^(-log2fc_copd[ranking]), digits=3),
+                                    row.names=rowData(se.filt)$symbol[ranking],
+                                    check.names=FALSE)
+de_fc_copd <- head(fold_change_copd, n=10)
+de_fc_copd
 ```
+
+In the resulting Data Frame:
+
+-   If a gene has a **positive** Log2FC value, it means said gene is
+    **FC** times more upregulated in samples with *COPD* compared to in
+    samples *without COPD*.
+
+    -   For example, TPRXL is more upregulated in samples with COPD than
+        in samples without COPD
+
+-   If a gene has a **negative** Log2FC value, it means said gene is
+    **1/FC** times more upregulated in samples *without COPD* compared
+    to in samples with *COPD*
+
+    -   For example, SLC22A16 is more upregulated in samples with COPD
+        than in samples without COPD
+
+## Linear Regression to analyze Differential Expression
+
+We will now use Linear Regression Models to perform our Differential
+Expression, using the **limma pipeline**.
 
 ```{r}
-no_dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="No Dysplasia"])
-dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="Dysplasia"])
+library(limma)
 ```
 
-Now we can build two plots to compare fold-change between the two groups
-(Figure \@ref(fig:foldDysplasia))
+We'll use the same two groupings, and use the followings steps:
 
-```{r foldDysplasia, fig.cap="Plot analysing the difference in expression between samples with and without Dysplasia"}
-par(mfrow=c(1, 2))
-plot(no_dysplasia, dysplasia, xlab="No Dysplasia", ylab="Dysplasia", pch=".", cex=4, las=1)
-plot((no_dysplasia+dysplasia)/2, no_dysplasia-dysplasia, xlab="(No Dysplasia + Dysplasia)/2", ylab="No Dysplasia - Dysplasia", pch=".", cex=4, las=1)
-```
+1.  Build our design matrix
+2.  Fit the linear model
+3.  Calculate moderated *t*-statistics
+4.  And finally we'll output the results, and get our list of
+    Differentially Expressed Genes.
 
-We can see the fold-change plot for the Dysplasia comparison (Figure
-\@ref(fig:foldDysplasia)) has a wider distribution than the COPD
-fold-change plot (Figure \@ref(fig:foldCOPD)), which suggests we'll have
-a higher number of Differentially Expressed genes in the Dysplasia DE
-Analysis.
+### Smoking status
 
-## Performing Differential Expression (DE)
+We will start with smoking status since the fold-change values are
+higher and it probably means we'll need less adjusting during the
+process (and it'll be simpler).
 
-We perform a simple assessment of the extent of expression changes and
-their associated p-values using the F-test implemented in the
-R/Bioconductor package [sva](http://bioconductor.org/packages/sva). We
-compare two groups of samples in the following ways.
+First, we build our design matrix.
 
 ```{r}
-library(sva)
+mod <- model.matrix(~ smoker, data=colData(se.filt))
+head(mod)
 ```
 
-### COPD
-
-We compare samples that have COPD with samples that don't have COPD. We
-have previously subset the data the way we needed.
-
-We build now the corresponding full and null model matrices.
+Next, we fit the linear regression model
 
 ```{r}
-mod <- model.matrix(~ se.filt$copd_status, colData(se.filt))
-mod0 <- model.matrix(~ 1, colData(se.filt))
+fit <- lmFit(assays(se.filt)$logCPM, mod)
 ```
 
-Finally, we conduct the F-test implemented in the package `sva` and
-examine the amount of differential expression between samples with COPD
-and without.
-
-```{r, message=FALSE}
-pv <- f.pvalue(assays(se.filt)$logCPM, mod, mod0)
-sum(p.adjust(pv, method="fdr") < 0.05)
-sum(p.adjust(pv, method="fdr") < 0.1)
-```
-
-We obtain `r sum(p.adjust(pv, method="fdr") < 0.05)` differentially
-expressed (DE) genes at FDR \< 5%, and
-`r sum(p.adjust(pv, method="fdr") < 0.1)` differentially expressed (DE)
-genes at FDR \< 10%, In Figure \@ref(fig:pdistCOPD) below we can see the
-distribution of the resulting p-values.
-
-```{r pdistCOPD, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between samples with COPD and samples without COPD."}
-hist(pv, main="", las=1, xlab="P-Value")
-```
-
-We build a table with the subset of
-`r sum(p.adjust(pv, method="fdr") < 0.1)` DE genes with FDR \< 10% and
-show the top-10 genes with lowest p-value in Table
-\@ref(tab:DEgenesCOPD) below.
-
-```{r, message=FALSE}
-mask <- p.adjust(pv, method="fdr") < 0.1
-DEgenesEGs <- names(pv)[mask]
-DEgenesSyms <- mcols(se.filt)[DEgenesEGs, "symbol"]
-DEgenesPvalue <- pv[mask]
-DEgenesDesc <- mcols(se.filt)[DEgenesEGs, "description"]
-DEgenesDesc <- sub(" \\[.+\\]", "", DEgenesDesc)
-DEgenesTab <- data.frame(EntrezID=DEgenesEGs,
-                         Symbol=DEgenesSyms,
-                         Description=DEgenesDesc,
-                         "P value"=DEgenesPvalue,
-                         stringsAsFactors=FALSE, check.names=FALSE)
-DEgenesTab <- DEgenesTab[order(DEgenesTab[["P value"]]), ] ## order by p-value
-rownames(DEgenesTab) <- 1:nrow(DEgenesTab)
-```
-
-```{=html}
-<!--
-The following code chunk is hidden because its lines are not that relevant
-to the analysis of the data. Their purpose is to dump the table of DE genes
-into an HTML table and a CSV file to facilitate the examination of long lists
-of DE genes while avoiding to produce a lengthy vignette by showing only the
-top-10 DE genes.
---->
-```
-```{r, echo=FALSE}
-## generate full table in a CSV file and store it in the 'doc' directory
-## twice, once in 'doc' to enable quickly look up during vignette editing
-## and building with 'devtools::build_vignettes()' and a second time in
-## 'inst/doc' to make these files available at install.
-fnameCSV <- "DEgenesCOPD.csv"
-fpathCSV <- file.path(path2pkg, "doc", fnameCSV)
-write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
-fpathCSV <- file.path(path2pkg, "inst", "doc", fnameCSV)
-write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
-
-## generate full table in HTML and store it into the 'doc' directory
-## twice, just as we did with the CSV file. note that because the
-## table caption is not translated from Markdown, but directly copied
-## into HTML, we need to avoid using the '<' symbol, as in FDR < 10%,
-## and put its HTML code instead (&lt;)
-ktab <- kable(DEgenesTab, "html", escape=FALSE, row.names=TRUE,
-              caption=sprintf("Differentially expressed genes. Differentially expressed genes between samples with COPD and samples without COPD, with FDR &lt; 10%% (CSV <a href=\"%s\" download>file</a>).",
-                              fnameCSV))
-ktab <- kable_styling(ktab,
-                      bootstrap_options=c("stripped", "hover", "responsive"),
-                      fixed_thead=TRUE)
-fnameHTML <- "DEgenesCOPD.html"
-fpathHTML <- file.path(path2pkg, "doc", fnameHTML)
-save_kable(ktab, file=fpathHTML, self_contained=TRUE)
-fpathHTML <- file.path(path2pkg, "inst", "doc", fnameHTML)
-save_kable(ktab, file=fpathHTML, self_contained=TRUE)
-```
-
-```{=html}
-<!--
-The following code chunk is also hidden because its purpose is to produce
-a short HTML table of the top-10 DE genes. The reason show here only the
-top-10 genes is to producing a long vignette. The full HTML table and the
-corresponding CSV file are linked through the caption of this short HTML
-table.
-
-note that because the table caption is not translated from Markdown, but
-directly copied into HTML, we need to avoid using the '<' symbol, as in
-FDR < 10%, and put its HTML code instead (&lt;)
---->
-```
-```{r DEgenesCOPD, echo=FALSE}
-ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE, 
-              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between samples with COPD and without COPD with FDR &lt; 10%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
-                              fnameHTML, fnameCSV))
-kable_styling(ktab, position="center")
-```
-
-### Histology
-
-We compare samples that have Dysplasia with samples that don't have
-Dysplasia. We have previously subset the data the way we needed.
-
-We build now the corresponding full and null model matrices.
+We calculate moderated *t-*statistics
 
 ```{r}
-mod <- model.matrix(~ se.filt$dysplasia, colData(se.filt))
-mod0 <- model.matrix(~ 1, colData(se.filt))
+fit <- eBayes(fit)
 ```
 
-Finally, we conduct the F-test implemented in the package `sva` and
-examine the amount of differential expression between samples with
-Dysplasia and samples with Hyperplasia/Normal samples.
+A quick overview of the results for FDR p-value cutoff at 5% (default)
 
-```{r, message=FALSE}
-pv <- f.pvalue(assays(se.filt)$logCPM, mod, mod0)
-sum(p.adjust(pv, method="fdr") < 0.05)
+```{r}
+res <- decideTests(fit)
+summary(res)
+
+summary(res)[1,2] + summary(res)[3,2]
 ```
 
-We obtain `r sum(p.adjust(pv, method="fdr") < 0.05)` differentially
-expressed (DE) genes at FDR \< 5% and
-`r sum(p.adjust(pv, method="fdr") < 0.1)` at FDR \< 10%. In Figure
-\@ref(fig:pdistDysplasia) below we can see the distribution of the
-resulting p-values.
+We have `r summary(res)[1,2]` downregulated genes, and
+`r summary(res)[3,2]` upregulated genes, a total of
+`r summary(res)[1,2] + summary(res)[3,2]`.
 
-```{r pdistDysplasia, echo=FALSE, out.width="600px", fig.cap="Distribution of raw p-values for an F-test on every gene between samples with Dysplasia and samples with Hyperplasia/Normal samples."}
-sum(p.adjust(pv, method="fdr") < 0.05)
-hist(pv, main="", las=1, xlab="P-Value")
+Seeing these results, we can afford to be a little more restricting with
+the FDR cut-off. We'll fetch the results with a p-value cut-off of
+0,001%.
+
+```{r}
+res <- decideTests(fit, p.value=0.00001)
+summary(res)
+
+summary(res)[1,2] + summary(res)[3,2]
 ```
 
-We build a table with the subset of
-`r sum(p.adjust(pv, method="fdr") < 0.05)` DE genes with FDR \< 5% and
-show the top-10 genes with lowest p-value in Table
-\@ref(tab:DEgenesDysplasia) below.
+We now have `r summary(res)[1,2]` downregulated genes, and
+`r summary(res)[3,2]` upregulated genes, a total of
+`r summary(res)[1,2] + summary(res)[3,2]`.
 
-```{r, message=FALSE}
-mask <- p.adjust(pv, method="fdr") < 0.05
-DEgenesEGs <- names(pv)[mask]
-DEgenesSyms <- mcols(se.filt)[DEgenesEGs, "symbol"]
-DEgenesPvalue <- pv[mask]
-DEgenesDesc <- mcols(se.filt)[DEgenesEGs, "description"]
-DEgenesDesc <- sub(" \\[.+\\]", "", DEgenesDesc)
-DEgenesTab <- data.frame(EntrezID=DEgenesEGs,
-                         Symbol=DEgenesSyms,
-                         Description=DEgenesDesc,
-                         "P value"=DEgenesPvalue,
-                         stringsAsFactors=FALSE, check.names=FALSE)
+And a more detailed view of the results (we'll be sure to add more
+information about the genes, so as to not only have the EntrezID
+identifier as rowname).
 
-DEgenesTab <- DEgenesTab[order(DEgenesTab[["P value"]]), ] ## order by p-value
-rownames(DEgenesTab) <- 1:nrow(DEgenesTab)
+The entire table, with information about all the genes:
+
+```{r}
+genesmd <- data.frame(chr=as.character(seqnames(rowRanges(se.filt))),
+                      symbol=rowData(se.filt)[,5],
+                      stringsAsFactors=FALSE)
+fit$genes <- genesmd
+  
+tt_smoker <- topTable(fit, coef=2, n=Inf)
+tt_smoker <- tt_smoker[order(tt_smoker$adj.P.Val),]
+dim(tt_smoker)
+head(tt_smoker)
+
 ```
 
-```{=html}
-<!--
-The following code chunk is hidden because its lines are not that relevant
-to the analysis of the data. Their purpose is to dump the table of DE genes
-into an HTML table and a CSV file to facilitate the examination of long lists
-of DE genes while avoiding to produce a lengthy vignette by showing only the
-top-10 DE genes.
---->
-```
-```{r, echo=FALSE}
-## generate full table in a CSV file and store it in the 'doc' directory
-## twice, once in 'doc' to enable quickly look up during vignette editing
-## and building with 'devtools::build_vignettes()' and a second time in
-## 'inst/doc' to make these files available at install.
-fnameCSV <- "DEgenesDysplasia.csv"
-fpathCSV <- file.path(path2pkg, "doc", fnameCSV)
-write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
-fpathCSV <- file.path(path2pkg, "inst", "doc", fnameCSV)
-write.csv(DEgenesTab, fpathCSV, row.names=FALSE)
+But our goal is to get a list of DE genes, so, finally, we'll fetch the
+genes called DE with FDR \<0,1%
 
-## generate full table in HTML and store it into the 'doc' directory
-## twice, just as we did with the CSV file. note that because the
-## table caption is not translated from Markdown, but directly copied
-## into HTML, we need to avoid using the '<' symbol, as in FDR < 10%,
-## and put its HTML code instead (&lt;)
-ktab <- kable(DEgenesTab, "html", escape=FALSE, row.names=TRUE,
-              caption=sprintf("Differentially expressed genes. Differentially expressed genes between samples with Dysplasia and samples with no Dysplasia, with FDR &lt; 5%% (CSV <a href=\"%s\" download>file</a>).",
-                              fnameCSV))
-ktab <- kable_styling(ktab,
-                      bootstrap_options=c("stripped", "hover", "responsive"),
-                      fixed_thead=TRUE)
-fnameHTML <- "DEgenesDysplasia.html"
-fpathHTML <- file.path(path2pkg, "doc", fnameHTML)
-save_kable(ktab, file=fpathHTML, self_contained=TRUE)
-fpathHTML <- file.path(path2pkg, "inst", "doc", fnameHTML)
-save_kable(ktab, file=fpathHTML, self_contained=TRUE)
+```{r}
+DEgenes_smoker <- rownames(tt_smoker)[tt_smoker$adj.P.Val < 0.00001]
+length(DEgenes_smoker)
 ```
 
-```{=html}
-<!--
-The following code chunk is also hidden because its purpose is to produce
-a short HTML table of the top-10 DE genes. The reason show here only the
-top-10 genes is to producing a long vignette. The full HTML table and the
-corresponding CSV file are linked through the caption of this short HTML
-table.
+We'll now plot the distribution of *p*-values and moderated
+*t*-statistics (Figure \@ref(fig:pdistSmoker))
 
-note that because the table caption is not translated from Markdown, but
-directly copied into HTML, we need to avoid using the '<' symbol, as in
-FDR < 10%, and put its HTML code instead (&lt;)
---->
-```
-```{r DEgenesDysplasia, echo=FALSE}
-ktab <- kable(DEgenesTab[1:10, ], "html", escape=FALSE, row.names=TRUE, 
-              caption=sprintf("Differentially expressed genes. Top-10 differentially expressed genes with lowest p-value between samples with Dysplasia and samples with No Dysplasia, with FDR &lt; 5%%. To see the full list of DE genes, follow this <a href=\"%s\" target=\"_blank\">link</a> or download this CSV <a href=\"%s\" download>file</a>.",
-                              fnameHTML, fnameCSV))
-kable_styling(ktab, position="center")
+```{r pdistSmoker, fig.cap="Distribution of p-values and moderated t-statistics on every gene between samples with that are Current smokers vs. samples that are former smokers."}
+par(mfrow=c(1,2), mar=c(4, 5, 2, 2))
+hist(tt_smoker$P.Value, xlab="Raw P-values", main="", las=1)
+qqt(fit$t[, 2], df=fit$df.prior+fit$df.residual, main="", pch=".", cex=3)
+abline(0, 1, lwd=2)
 ```
 
-We can also see, when comparing both *Distribution of raw p-values for
-an F-test* plots (Figures \@ref(fig:pdistCOPD) and
-\@ref(fig:pdistDysplasia)), that the one corresponding to the Dysplasia
-grouping has a lot more of p-values closer to 0, which suggests that
-grouping will have more DE genes.
+Another relevant one is the volcano plot
+
+```{r}
+volcanoplot(fit, coef=2, highlight=7, names=fit$genes$symbol, las=1)
+```
+
+We can see from the plots our results are highly relevant and
+statistically significant.
+
+### PML (Dysplasia)
+
+Before we start, we have to exclude the metaplasia group, seeing as it
+was excluded in the paper and we need two groups only, dysplasia vs. no
+dysplasia.
+
+```{r}
+se.filt <- se.filt[,se.filt$dysplasia!="metaplasia"]
+se.filt$dysplasia <- factor(se.filt$dysplasia, levels = c("dysplasia", "no dysplasia"))
+dim(se.filt)
+```
+
+First, we build our design matrix.
+
+```{r}
+mod <- model.matrix(~ dysplasia, data=colData(se.filt))
+head(mod)
+```
+
+Next, we fit the linear regression model
+
+```{r}
+fit <- lmFit(assays(se.filt)$logCPM, mod)
+```
+
+We calculate moderated *t-*statistics
+
+```{r}
+fit <- eBayes(fit)
+```
+
+A quick overview of the results for FDR p-value cutoff at 5% (default)
+
+```{r}
+res <- decideTests(fit)
+summary(res)
+
+summary(res)[1,2] + summary(res)[3,2]
+```
+
+We have `r summary(res)[1,2]` downregulated genes, and
+`r summary(res)[3,2]` upregulated genes, a total of
+`r summary(res)[1,2] + summary(res)[3,2]`.
+
+Seeing these results, we can afford to be a little more restricting with
+the FDR cut-off. We'll fetch the results with a p-value cut-off of 1%.
+
+```{r}
+res <- decideTests(fit, p.value=0.01)
+summary(res)
+
+summary(res)[1,2] + summary(res)[3,2]
+```
+
+We now have `r summary(res)[1,2]` downregulated genes, and
+`r summary(res)[3,2]` upregulated genes, a total of
+`r summary(res)[1,2] + summary(res)[3,2]`.
+
+And a more detailed view of the results (we'll be sure to add more
+information about the genes, so as to not only have the EntrezID
+identifier as rowname).
+
+The entire table, with information about all the genes:
+
+```{r}
+genesmd <- data.frame(chr=as.character(seqnames(rowRanges(se.filt))),
+                      symbol=rowData(se.filt)[,5],
+                      stringsAsFactors=FALSE)
+fit$genes <- genesmd
+  
+tt_dysplasia <- topTable(fit, coef=2, n=Inf)
+tt_dysplasia <- tt_dysplasia[order(tt_dysplasia$adj.P.Val),]
+dim(tt_dysplasia)
+head(tt_dysplasia)
+
+```
+
+But our goal is to get a list of DE genes, so, finally, we'll fetch the
+genes called DE with FDR \<1%
+
+```{r}
+DEgenes_dysplasia <- rownames(tt_dysplasia)[tt_dysplasia$adj.P.Val < 0.01]
+length(DEgenes_dysplasia)
+```
+
+We'll now plot the distribution of *p*-values and moderated
+*t*-statistics (Figure \@ref(fig:pdistDysplasia))
+
+```{r pdistDysplasia, fig.cap="Distribution of p-values and moderated t-statistics on every gene between samples with PML vs. without PML."}
+par(mfrow=c(1,2), mar=c(4, 5, 2, 2))
+hist(tt_dysplasia$P.Value, xlab="Raw P-values", main="", las=1)
+qqt(fit$t[, 2], df=fit$df.prior+fit$df.residual, main="", pch=".", cex=3)
+abline(0, 1, lwd=2)
+```
+
+Another relevant one is the volcano plot
+
+```{r}
+volcanoplot(fit, coef=2, highlight=7, names=fit$genes$symbol, las=1)
+```
+
+We can see from the plots our results are highly relevant and
+statistically significant.
 
 # Functional analysis
 
