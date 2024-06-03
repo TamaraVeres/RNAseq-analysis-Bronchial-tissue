@@ -907,50 +907,6 @@ In the resulting Data Frame:
 We can clearly see the difference of expression between groups is larger
 with the smoking status distinction than the dysplasia one.
 
-### COPD
-
-Our two groups of samples are: samples with COPD and samples with No
-COPD. We calculate the means of the values of the expression levels.
-
-```{r}
-copd <- rowMeans(logCPM[, se.filt$copd_status=="COPD"])
-no_copd <- rowMeans(logCPM[, se.filt$copd_status=="No COPD"])
-```
-
-We can now calculate fold-change values for each gene in these two
-groups. We'll rank the genes by decreasing absolute value of Fold
-Change, and we'll call differentially expressed genes those that are at
-the top 10.
-
-```{r}
-log2fc_copd <- copd - no_copd
-ranking <- order(abs(log2fc_copd), decreasing=TRUE)
-fold_change_copd <- data.frame(EntrezID=names(log2fc_copd[ranking]),
-                                    Log2FC=round(log2fc_copd[ranking], digits=3),
-                                    FC=round(2^log2fc_copd[ranking], digits=3),
-                                    "1/FC"=round(2^(-log2fc_copd[ranking]), digits=3),
-                                    row.names=rowData(se.filt)$symbol[ranking],
-                                    check.names=FALSE)
-de_fc_copd <- head(fold_change_copd, n=10)
-de_fc_copd
-```
-
-In the resulting Data Frame:
-
--   If a gene has a **positive** Log2FC value, it means said gene is
-    **FC** times more upregulated in samples with *COPD* compared to in
-    samples *without COPD*.
-
-    -   For example, TPRXL is more upregulated in samples with COPD than
-        in samples without COPD
-
--   If a gene has a **negative** Log2FC value, it means said gene is
-    **1/FC** times more upregulated in samples *without COPD* compared
-    to in samples with *COPD*
-
-    -   For example, SLC22A16 is more upregulated in samples with COPD
-        than in samples without COPD
-
 ## Linear Regression to analyze Differential Expression
 
 We will now use Linear Regression Models to perform our Differential
@@ -1173,7 +1129,171 @@ statistically significant.
 
 # Functional analysis
 
-Here we will do the functional analysis.
+Now, let's attempt to find DE pathways, as DE gene sets, by detecting the functional enrichment. 
+
+## Gene Ontology
+
+Firstly, we will attempt to do it with the Gene Ontology (GO) analysis which corresponds to applying the
+one-tailed Fisher's exact test to every gene set in the GO database. To execute this, we will use the
+Bioconductor package GOstats.
+
+The first step is to create our gene universe.
+
+```{r, message=FALSE}
+library(GOstats)
+library(org.Hs.eg.db)
+
+geneUniverse <- rownames(se.filt)
+```
+
+
+### Functional Analysis for Smoking Status
+
+Let's build the parameter object and use the conditional test which computes the significance of a GO term conditional on the significance of its children.
+
+```{r, message=FALSE}
+paramsSmokerStatus <- new("GOHyperGParams", geneIds=DEgenes_smoker,    
+                 universeGeneIds=geneUniverse,
+                 annotation="org.Hs.eg.db", ontology="BP",
+                 pvalueCutoff=0.05, testDirection="over")
+
+conditional(paramsSmokerStatus) <- TRUE
+```
+
+The next step is to run the functional enrichment analysis.
+
+```{r, message=FALSE}
+hgOverCondSmokerStatus <- hyperGTest(paramsSmokerStatus)
+hgOverCondSmokerStatus
+```
+And lastly to store and visualize the results. The resHgOverCond data.frame object contacts the results of the hypothesis test for each GO term,
+satisfying the P-value cutoff.
+
+```{r, message=FALSE}
+resHgOverCondSmokerStatus <- summary(hgOverCondSmokerStatus)
+dim(resHgOverCondSmokerStatus)
+head(resHgOverCondSmokerStatus)
+
+htmlReport(hgOverCondSmokerStatus, file="../doc/gotests_smoker_status.html")
+browseURL("gotests_smoker_status.html")
+```
+Check out the result <a href="../doc/gotests_smoker_status.html" target="_blank">here</a>.
+
+We do not want our GO terms to be involving too few genes or too many genes. That would make them too unreliable. So let's filter the previous results with a minimum size of 3, a maximum size of 300 and a minimum count of 3. Then we order them by the OddsRatio column.
+
+```{r, message=FALSE}
+resHgOverCondSmokerStatus <- resHgOverCondSmokerStatus[!is.infinite(resHgOverCondSmokerStatus$OddsRatio), ]
+mask <- resHgOverCondSmokerStatus$Size >= 3 & resHgOverCondSmokerStatus$Size <= 300 & resHgOverCondSmokerStatus$Count >= 3
+resHgOverCondSmokerStatus <- resHgOverCondSmokerStatus[mask, ]
+dim(resHgOverCondSmokerStatus)
+
+ord <- order(resHgOverCondSmokerStatus$OddsRatio, decreasing=TRUE)
+resHgOverCondSmokerStatus <- resHgOverCondSmokerStatus[ord, ]
+head(resHgOverCondSmokerStatus)
+```
+
+Using the geneIdsByCategory() method, we extract the genes that enrich each GO term and paste it to the result.
+
+```{r, message=FALSE}
+geneIDs <- geneIdsByCategory(hgOverCondSmokerStatus)[resHgOverCondSmokerStatus$GOBPID]
+geneSYMs <- sapply(geneIDs, function(id) select(org.Hs.eg.db, columns="SYMBOL", key=id, keytype="ENTREZID")$SYMBOL)
+geneSYMs <- sapply(geneSYMs, paste, collapse=", ")
+goresultsSmokerStatus <- cbind(resHgOverCondSmokerStatus, Genes=geneSYMs)
+rownames(goresultsSmokerStatus) <- 1:nrow(goresultsSmokerStatus)
+```
+We generate an HTML page using the knitr and kableExtra packages.
+
+```{r GOTableSmokerStatusResults, echo=FALSE}
+library(kableExtra)
+ktab <- kable(goresultsSmokerStatus, "html", caption="GO results Smoker Status")
+ktab <- kable_styling(ktab, bootstrap_options=c("stripped", "hover", "responsive"), fixed_thead=TRUE)
+save_kable(ktab, file="../doc/goresults_smoker_status.html", self_contained=TRUE)
+```
+
+See the HTML page by clicking on this <a href="../doc/goresults_smoker_status.html" target="_blank">link</a>.
+
+Table \@ref(tab:GOTableSmokerStatus2) displays the top 10 Go results (sorted by Odds Ratio).
+
+```{r GOTableSmokerStatus2, echo=FALSE}
+ktab <- kable(goresultsSmokerStatus[1:10, 2:7], "html", escape=FALSE, row.names=TRUE,
+              caption=sprintf("GO Enrichment Smoker Status"))
+kable_styling(ktab, position="center")
+```
+
+### Functional Analysis for PML (Dysplasia)
+
+Build the parameter object and use the conditional test.
+
+```{r, message=FALSE}
+paramsDysplasia <- new("GOHyperGParams", geneIds=DEgenes_dysplasia,    
+                 universeGeneIds=geneUniverse,
+                 annotation="org.Hs.eg.db", ontology="BP",
+                 pvalueCutoff=0.05, testDirection="over")
+
+conditional(paramsDysplasia) <- TRUE
+```
+
+Run the functional enrichment analysis.
+
+```{r, message=FALSE}
+hgOverCondDysplasia <- hyperGTest(paramsDysplasia)
+hgOverCondDysplasia
+```
+
+Store and visualize the results.
+
+```{r, message=FALSE}
+resHgOverCondDysplasia <- summary(hgOverCondDysplasia)
+dim(resHgOverCondDysplasia)
+head(resHgOverCondDysplasia)
+
+htmlReport(hgOverCondDysplasia, file="../doc/gotests_dysplasia.html")
+browseURL("gotests_dysplasia.html")
+```
+
+Check out the result <a href="../doc/gotests_dysplasia.html" target="_blank">here</a>.
+
+Filter the previous results with a minimum size of 3, a maximum size of 300 and a minimum count of 3 and order them by the OddsRatio column.
+
+```{r, message=FALSE}
+resHgOverCondDysplasia <- resHgOverCondDysplasia[!is.infinite(resHgOverCondDysplasia$OddsRatio), ]
+mask <- resHgOverCondDysplasia$Size >= 3 & resHgOverCondDysplasia$Size <= 300 & resHgOverCondDysplasia$Count >= 3
+resHgOverCondDysplasia <- resHgOverCondDysplasia[mask, ]
+dim(resHgOverCondDysplasia)
+
+ord <- order(resHgOverCondDysplasia$OddsRatio, decreasing=TRUE)
+resHgOverCondDysplasia <- resHgOverCondDysplasia[ord, ]
+head(resHgOverCondDysplasia)
+```
+
+Using the geneIdsByCategory() method, we extract the genes that enrich each GO term and paste it to the result.
+
+```{r, message=FALSE}
+geneIDs <- geneIdsByCategory(hgOverCondDysplasia)[resHgOverCondDysplasia$GOBPID]
+geneSYMs <- sapply(geneIDs, function(id) select(org.Hs.eg.db, columns="SYMBOL", key=id, keytype="ENTREZID")$SYMBOL)
+geneSYMs <- sapply(geneSYMs, paste, collapse=", ")
+goresultsDysplasia <- cbind(resHgOverCondDysplasia, Genes=geneSYMs)
+rownames(goresultsDysplasia) <- 1:nrow(goresultsDysplasia)
+```
+
+We generate an HTML page using the knitr and kableExtra packages.
+
+```{r GOTableDysplasiaResults, echo=FALSE}
+library(kableExtra)
+ktab <- kable(goresultsDysplasia, "html", caption="GO results Dysplasia")
+ktab <- kable_styling(ktab, bootstrap_options=c("stripped", "hover", "responsive"), fixed_thead=TRUE)
+save_kable(ktab, file="../doc/goresults_dysplasia.html", self_contained=TRUE)
+```
+
+See the HTML page by clicking on this <a href="../doc/goresults_dysplasia.html" target="_blank">link</a>.
+
+Table \@ref(tab:GOTableDysplasia2) displays the top 10 Go results (sorted by Odds Ratio).
+
+```{r GOTableDysplasia2, echo=FALSE}
+ktab <- kable(goresultsDysplasia[1:10, 2:7], "html", escape=FALSE, row.names=TRUE,
+              caption=sprintf("GO Enrichment Dysplasia"))
+kable_styling(ktab, position="center")
+```
 
 # Discussion
 
