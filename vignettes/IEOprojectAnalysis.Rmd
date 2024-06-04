@@ -1593,6 +1593,27 @@ Alzheimer’s involves neuroinflammation and protein misfolding.
 Current smokers: Smoking-associated oxidative stress and inflammation may increase Alzheimer’s risk.
 Former smokers: Risk reduction after quitting.
 
+
+## Results
+
+In our project, we aimed to explore the effects of smoking on cellular functions using Gene Set Enrichment Analysis (GSEA) and Gene Ontology (GO) analysis. We conducted these analyses on samples with dysplasia versus no dysplasia and current smokers versus former smokers.
+
+Both GSEA and GO analysis revealed that smoking significantly impacts various cellular pathways. A key finding across both analyses was the consistent identification of pathways related to ribosomal function and protein synthesis. Specifically, we found that smoking affects the expression and function of ribosomal proteins, which are critical for protein biogenesis.
+
+Our findings align with the study by Park et al. (2021) published in Scientific Reports, which also identified a detrimental effect of smoking on ribosomal function and protein synthesis. This study found that exposure to electronic cigarette smoke reduces ribosomal protein gene expression, impairing protein synthesis in primary human airway epithelial cells. The reduced expression of ribosomal proteins and subsequent impairment in protein synthesis could lead to various cellular dysfunctions.
+
+The impairment of ribosomal function may contribute to the pathogenesis of various smoking-related diseases, including cancer. The referenced study highlighted the potential for smoking to induce carcinogenesis through the disruption of ribosomal biogenesis and protein synthesis, which are critical for maintaining cellular homeostasis.
+
+Further findings indicate that smoking disrupts cytoplasmic translation and peptide chain elongation.The adverse effects of smoking on ribosomal function and protein synthesis were further supported by the study of Merzah et al. (2023), which identified differentially expressed genes (DEGs) related to immune response and inflammation pathways in smokers. The study revealed that smoking leads to a significant downregulation of genes involved in oxygen binding and activity, emphasizing the role of oxidative stress in disrupting cellular functions.
+
+The findings highlight the potential role of impaired protein synthesis in the pathogenesis of smoking-related diseases, including cancer and coronary artery disease (CAD). The study by Merzah et al. (2023) supports the link between smoking, oxidative stress, and the disruption of critical cellular pathways, contributing to disease development.
+
+Other pathways identified in our analyses were related to mitochondrial electron transport and ATP synthesis, emphasizing how smoking-induced oxidative stress disrupts cellular functions. Smoking introduces numerous toxins that induce oxidative stress, resulting in the production of reactive oxygen species (ROS) which can damage cellular components, including mitochondria. This oxidative stress impairs mitochondrial function, leading to a cascade of detrimental effects on cellular health. As highlighted in the study by Kanithi et al. (2022), toxins in cigarette smoke and e-cigarette vapor significantly damage mitochondrial function by increasing oxidative stress, disrupting mitochondrial morphology, and impairing critical processes such as fusion, fission, and mitophagy. 
+
+Our analyses also identified significant disruptions in pathways related ATP synthesis. These processes are crucial for cellular energy production and overall mitochondrial health. Smoking-induced oxidative stress damages the electron transport chain, leading to reduced ATP production and impaired cellular energy metabolism. The resulting energy deficit can hinder cellular processes, contributing to the development of diseases such as cancer and cardiovascular conditions.
+
+
+
 # Conclusions
 
 Here we summarize our conclusions.
