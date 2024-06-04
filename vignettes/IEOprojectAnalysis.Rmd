@@ -1320,8 +1320,8 @@ We create a custom gene set (de_fc_dysplasiaGS) using the Entrez IDs of differen
 ```{r}
 de_fc_dysplasiaGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_dysplasia$EntrezID, setName="DE_FC_DYS")
 details(de_fc_dysplasiaGS)
-gsc <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS))
-gsets <- geneIds(gsc)
+gsc_dysplasia <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS))
+gsets_dysplasia <- geneIds(gsc_dysplasia)
 ```
 
 We prepare the data by converting the histology information into factors and then into integers.
@@ -1329,18 +1329,18 @@ We prepare the data by converting the histology information into factors and the
 ```{r}
 
 
-histology_factors <- factor(se.filt$histology)
-histology_integers <- as.integer(histology_factors)
+histology_factors_dysplasia <- factor(se.filt$dysplasia)
+histology_integers_dysplasia <- as.integer(histology_factors_dysplasia)
 
-levels(histology_factors)
-histology_integers
+levels(histology_factors_dysplasia)
+histology_integers_dysplasia
 ```
 
 We use the fgseaLabel function to perform GSEA by permuting phenotypes 10,000 times to compute enrichment scores and p-values for each gene set.
 ```{r}
 
-gseapermpheno <- fgseaLabel(gsets, assays(se.filt)$logCPM, histology_integers,10000, minSize=5, maxSize=300)
-head(gseapermpheno[order(gseapermpheno$pval), ])
+gseapermpheno_dysplasia <- fgseaLabel(gsets_dysplasia, assays(se.filt)$logCPM, histology_integers_dysplasia,10000, minSize=5, maxSize=300)
+head(gseapermpheno_dysplasia[order(gseapermpheno_dysplasia$pval)])
 
 ```
 
@@ -1348,12 +1348,12 @@ We prepare a ranked list of genes based on their differential expression statist
 We then use the fgsea function to perform GSEA on this ranked list.
 
 ``` {r}
-stats <- tt_dysplasia$t
-names(stats) <- rownames(tt_dysplasia)
-gseapermgsets <- fgsea(gsets, stats, minSize=5, maxSize=300)
-head(gseapermgsets[order(gseapermgsets$pval), ])
-gseapermpheno[gseapermpheno$padj < 0.01, ]
-gseapermgsets[gseapermgsets$padj < 0.01, ]
+stats_dysplasia <- tt_dysplasia$t
+names(stats_dysplasia) <- rownames(tt_dysplasia)
+gseapermgsets_dysplasia <- fgsea(gsets, stats, minSize=5, maxSize=300)
+head(gseapermgsets_dysplasia[order(gseapermgsets_dysplasia$pval), ])
+gseapermpheno_dysplasia[gseapermpheno_dysplasia$padj < 0.01, ]
+gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
 ```
 
 
@@ -1362,17 +1362,17 @@ We also generate an enrichment plot for the custom gene set DE_FC_DYS to show th
 
 ```{r}
 par(mfrow=c(1, 2))
-hist(gseapermpheno$pval, xlab="P-value", main="Permuting phenotypes", las=1)
-hist(gseapermgsets$pval, xlab="P-value", main="Permuting gene sets", las=1)
-plotEnrichment(gsets$DE_FC_DYS, stats)
+hist(gseapermpheno_dysplasia$pval, xlab="P-value", main="Permuting phenotypes", las=1)
+hist(gseapermgsets_dysplasia$pval, xlab="P-value", main="Permuting gene sets", las=1)
+plotEnrichment(gsets_dysplasia$DE_FC_DYS, stats_dysplasia)
 
 ```
 
 We use this part of the code to identify pathways that are significantly enriched (adjusted p-value < 0.01). The plotGseaTable function then generates a table and plot of GSEA results for these significant pathways, showing the enrichment scores and p-values. This helps us visualize and interpret the most relevant pathways in our dysplasia analysis.
 
 ```{r}
-DEpwys <- gseapermgsets$pathway[gseapermgsets$padj < 0.01]
-plotGseaTable(gsets[DEpwys], stats, gseapermgsets, gseaParam=0.5)
+DEpwys_dysplasia <- gseapermgsets_dysplasia$pathway[gseapermgsets_dysplasia$padj < 0.01]
+plotGseaTable(gsets_dysplasia[DEpwys_dysplasia], stats_dysplasia, gseapermgsets_dysplasia, gseaParam=0.5)
 
 ```
 
@@ -1380,21 +1380,21 @@ We use the limma::camera function to perform an additional gene set analysis tha
 
 ```{r} 
 library(limma)
-gsetidx <- ids2indices(geneIds(gsc), rownames(se.filt))
-camerares <- camera(y=assays(se.filt)$logCPM, index=gsetidx, design=mod, contrast=2)
-head(camerares, 5)
+gsetidx_dysplasia <- ids2indices(geneIds(gsc_dysplasia), rownames(se.filt))
+camerares_dysplasia <- camera(y=assays(se.filt)$logCPM, index=gsetidx_dysplasia, design=mod, contrast=2)
+head(camerares_dysplasia, 5)
 ```
 
 We filter the Camera results to focus on pathways with an FDR < 0.01, ensuring we only consider the most significant pathways. This step helps us further refine our list of relevant pathways.
 
 ```{r}
-camerares[camerares$FDR < 0.01, ]
+camerares_dysplasia[camerares_dysplasia$FDR < 0.01, ]
 ```
 
 We create a histogram of the p-values from the Camera results to visualize the distribution of significance levels across all tested pathways. This plot provides an overview of the significance of the pathways in relation to dysplasia.
 
 ```{r}
-hist(camerares$PValue, xlab="P-value", main="Camera", las=1)
+hist(camerares_dysplasia$PValue, xlab="P-value", main="Camera", las=1)
 ```
 
 
@@ -1418,55 +1418,53 @@ c2BroadSets
 Create a costum gene set for Smoking status.
 
 ```{r}
-
 de_fc_smokerGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_smoker$EntrezID, setName="DE_FC_SMOKER")
 details(de_fc_smokerGS)
-gsc <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS, de_fc_smokerGS))
-gsets <- geneIds(gsc)
+gsc_smoker <- GeneSetCollection(c(c2BroadSets, de_fc_smokerGS))
+gsets_smoker <- geneIds(gsc_smoker)
 ```
 
 Prepare the data. 
 
 ```{r}
-histology_factors <- factor(se.filt$histology)
-histology_integers <- as.integer(histology_factors)
+histology_factors_smoker <- factor(se.filt$smoker)
+histology_integers_smoker <- as.integer(histology_factors_smoker)
 
-levels(histology_factors)
-histology_integers
+levels(histology_factors_smoker)
+histology_integers_smoker
 
 ```
 
 Run the GSEA by permuting phenotypes.
 ```{r}
-gseapermpheno <- fgseaLabel(gsets, assays(se.filt)$logCPM, histology_integers,10000, minSize=5, maxSize=300)
-head(gseapermpheno[order(gseapermpheno$pval), ])
-
+gseapermpheno_smoker <- fgseaLabel(gsets_smoker, assays(se.filt)$logCPM, histology_integers_smoker,10000, minSize=5, maxSize=300)
+head(gseapermpheno_smoker[order(gseapermpheno_smoker$pval), ])
 ```
 
 Run GSEA with the ranked gene list.
 ``` {r}
-stats <- tt_smoker$t
-names(stats) <- rownames(tt_dysplasia)
-gseapermgsets <- fgsea(gsets, stats, minSize=5, maxSize=300)
-head(gseapermgsets[order(gseapermgsets$pval), ])
-gseapermpheno[gseapermpheno$padj < 0.01, ]
-gseapermgsets[gseapermgsets$padj < 0.01, ]
+stats_smoker <- tt_smoker$t
+names(stats_smoker) <- rownames(tt_smoker)
+gseapermgsets_smoker <- fgsea(gsets_smoker, stats_smoker, minSize=5, maxSize=300)
+head(gseapermgsets_smoker[order(gseapermgsets_smoker$pval), ])
+gseapermpheno_smoker[gseapermpheno_smoker$padj < 0.01, ]
+gseapermgsets_smoker[gseapermgsets_smoker$padj < 0.01, ]
 ```
 
 Visualize GSEA results.
 ```{r}
 par(mfrow=c(1, 2))
-hist(gseapermpheno$pval, xlab="P-value", main="Permuting phenotypes", las=1)
-hist(gseapermgsets$pval, xlab="P-value", main="Permuting gene sets", las=1)
-plotEnrichment(gsets$DE_FC_SMOKER, stats)
+hist(gseapermpheno_smoker$pval, xlab="P-value", main="Permuting phenotypes", las=1)
+hist(gseapermgsets_smoker$pval, xlab="P-value", main="Permuting gene sets", las=1)
+plotEnrichment(gsets_smoker$DE_FC_SMOKER, stats_smoker)
 
 ```
 
 Identify significant pathways.
 
 ```{r}
-DEpwys <- gseapermgsets$pathway[gseapermgsets$padj < 0.01]
-plotGseaTable(gsets[DEpwys], stats, gseapermgsets, gseaParam=0.5)
+DEpwys <- gseapermgsets_smoker$pathway[gseapermgsets_smoker$padj < 0.01]
+plotGseaTable(gsets_smoker[DEpwys], stats_smoker, gseapermgsets_smoker, gseaParam=0.5)
 
 ```
 
@@ -1474,20 +1472,20 @@ Additional validation using Camera.
 
 ```{r} 
 library(limma)
-gsetidx <- ids2indices(geneIds(gsc), rownames(se.filt))
-camerares <- camera(y=assays(se.filt)$logCPM, index=gsetidx, design=mod, contrast=2)
-head(camerares, 5)
+gsetidx_smoker <- ids2indices(geneIds(gsc_smoker), rownames(se.filt))
+camerares_smoker <- camera(y=assays(se.filt)$logCPM, index=gsetidx_smoker, design=mod, contrast=2)
+head(camerares_smoker, 5)
 ```
 
 Filter significant pathways from Camera.
 
 ```{r}
-camerares[camerares$FDR < 0.01, ]
+camerares_smoker[camerares_smoker$FDR < 0.01, ]
 ```
 
 Visualise significant pathways from Camera for Smoking status.
 ```{r}
-hist(camerares$PValue, xlab="P-value", main="Camera", las=1)
+hist(camerares_smoker$PValue, xlab="P-value", main="Camera", las=1)
 ```
 
 # Discussion
@@ -1540,6 +1538,60 @@ Proton motive force-driven ATP synthesis (GO:0015986): This process is a part of
 Protein maturation by [4Fe-4S] cluster transfer (GO:0106035): This involves the assembly of iron-sulfur clusters, which are essential for various cellular processes, including DNA repair and electron transport. Oxidative stress from smoking can impair iron-sulfur cluster assembly, leading to defects in cellular metabolism and potentially contributing to dysplasia.
 
 Ribosomal small subunit assembly (GO:0000028) & Ribosomal small subunit biogenesis (GO:0042274): These are critical for the formation of functional ribosomes, which are essential for protein synthesis. Disruption in ribosome biogenesis can be caused by smoking-related oxidative stress and inflammation, affecting protein synthesis and cell growth, potentially leading to dysplasia.
+
+
+## GSEA
+
+### Dysplasia vs no dysplasia results 
+
+The most significant pathways identified in this analysis are primarily related to protein synthesis and ribosome function, indicating that these processes are notably dysregulated in dysplasia. The high significance of these pathways (with p-values less than 1e-50) underscores their potential role in the pathogenesis of dysplasia and their importance as areas for further investigation. The pathways are listed below: 
+
+KEGG_RIBOSOME
+This pathway involves the synthesis and function of ribosomes, essential for protein synthesis. Smoking can disrupt ribosomal biogenesis and function, leading to altered protein synthesis. Such disruptions are common in rapidly dividing cancer cells and precancerous conditions like dysplasia, where proper protein synthesis is vital for normal cell growth and differentiation.
+
+REACTOME_PEPTIDE_CHAIN_ELONGATION
+Peptide chain elongation is a critical step in translation where amino acids are added to the growing peptide chain. Smoking can lead to dysregulated elongation through oxidative stress and inflammatory responses, resulting in abnormal protein synthesis and contributing to cellular transformation seen in dysplasia and cancer.
+
+REACTOME_VIRAL_MRNA_TRANSLATION
+This pathway involves the translation of viral mRNA within host cells. Smoking-induced inflammation and oxidative stress can create a cellular environment that facilitates viral infections and disrupts normal mRNA translation processes, contributing to cellular dysfunction and the development of dysplasia and cancer.
+
+REACTOME_FORMATION_OF_A_POOL_OF_FREE_40S_SUBUNITS
+This pathway involves the formation of free 40S ribosomal subunits, which are crucial for the initiation of translation. Smoking can disrupt this process through oxidative stress and ribosomal damage, leading to impaired protein synthesis. Such dysregulation can contribute to uncontrolled cell growth and the development of dysplasia and cancer.
+
+REACTOME_INFLUENZA_VIRAL_RNA_TRANSCRIPTION_AND_REPLICATION
+This pathway describes the transcription and replication of influenza viral RNA, which can disrupt host cellular processes. Smoking-induced inflammation and oxidative stress can create an environment conducive to viral infections, further disrupting normal cellular functions and contributing to the development of dysplasia and cancer.
+
+### Current and former smoker results
+
+BIOCARTA_IL7_PATHWAY:
+The IL-7 pathway is essential for normal development of B cells and T cells in the immune system.
+Mice lacking the IL-7 receptor exhibit a deficiency in both B and T cells. Some humans with severe combined immunodeficiency disease (SCID) also have mutations in their IL-7 receptor gene, leading to impaired B cell production and T cell absence.
+For current smokers, chronic nicotine exposure may impact IL-7 signaling, affecting immune responses.
+Former smokers might see a return to baseline IL-7 signaling dynamics after quitting.
+
+BIOCARTA_PROTEASOME_PATHWAY:
+This pathway involves the proteasome, responsible for protein degradation.
+Proteasomes regulate protein turnover, impacting various cellular processes.
+Current smokers: Smoking-related oxidative stress may affect proteasome function.
+Former smokers: Proteasome activity may normalize after quitting.
+
+BIOCARTA_SALMONELLA_PATHWAY:
+Relates to Salmonella infection.
+Salmonella is a pathogenic bacterium causing foodborne illness.
+Current smokers: Altered immune responses due to smoking might impact susceptibility to infections like Salmonella.
+Former smokers: Reduced exposure may decrease susceptibility.
+
+KEGG_ALLOGRAFT_REJECTION:
+Involves immune responses against transplanted tissues (allografts).
+Allograft rejection is influenced by immune activation.
+Current smokers: Smoking-related immune changes could affect allograft acceptance or rejection.
+Former smokers: Reduced exposure may improve allograft outcomes.
+
+KEGG_ALZHEIMERS_DISEASE:
+Relates to Alzheimer’s disease.
+Alzheimer’s involves neuroinflammation and protein misfolding.
+Current smokers: Smoking-associated oxidative stress and inflammation may increase Alzheimer’s risk.
+Former smokers: Risk reduction after quitting.
 
 # Conclusions
 
