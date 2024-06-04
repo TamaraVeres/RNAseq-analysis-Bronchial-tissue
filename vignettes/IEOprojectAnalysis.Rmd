@@ -1352,10 +1352,21 @@ stats_dysplasia <- tt_dysplasia$t
 names(stats_dysplasia) <- rownames(tt_dysplasia)
 gseapermgsets_dysplasia <- fgsea(gsets_dysplasia, stats_dysplasia, minSize=5, maxSize=300)
 head(gseapermgsets_dysplasia[order(gseapermgsets_dysplasia$pval), ])
+```
+```{r}
 gseapermpheno_dysplasia[gseapermpheno_dysplasia$padj < 0.01, ]
 gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
-```
 
+```
+```{r}
+
+
+significant_pathways_gsets_dysplasia <- gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
+significant_pathways_gsets_ordered_dysplasia <- significant_pathways_gsets_dysplasia[order(significant_pathways_gsets_dysplasia$padj), ]
+head(significant_pathways_gsets_ordered_dysplasia, n = 10)
+
+
+```
 
 We create histograms of p-values from both GSEA methods (permuting phenotypes and permuting gene sets) to visualize the distribution of p-values.
 We also generate an enrichment plot for the custom gene set DE_FC_DYS to show the enrichment score across the ranked gene list.
@@ -1371,30 +1382,10 @@ plotEnrichment(gsets_dysplasia$DE_FC_DYS, stats_dysplasia)
 We use this part of the code to identify pathways that are significantly enriched (adjusted p-value < 0.01). The plotGseaTable function then generates a table and plot of GSEA results for these significant pathways, showing the enrichment scores and p-values. This helps us visualize and interpret the most relevant pathways in our dysplasia analysis.
 
 ```{r}
-DEpwys_dysplasia <- gseapermgsets_dysplasia$pathway[gseapermgsets_dysplasia$padj < 0.01]
+DEpwys_dysplasia <- significant_pathways_gsets_ordered_dysplasia$pathway
 plotGseaTable(gsets_dysplasia[DEpwys_dysplasia], stats_dysplasia, gseapermgsets_dysplasia, gseaParam=0.5)
 
-```
 
-We use the limma::camera function to perform an additional gene set analysis that adjusts for inter-gene correlation within gene sets. This step enhances the robustness of our findings by providing an alternative method to validate the significant pathways identified by GSEA. The camera function uses the same gene sets and design matrix as our previous analyses.
-
-```{r} 
-library(limma)
-gsetidx_dysplasia <- ids2indices(geneIds(gsc_dysplasia), rownames(se.filt))
-camerares_dysplasia <- camera(y=assays(se.filt)$logCPM, index=gsetidx_dysplasia, design=mod, contrast=2)
-head(camerares_dysplasia, 5)
-```
-
-We filter the Camera results to focus on pathways with an FDR < 0.01, ensuring we only consider the most significant pathways. This step helps us further refine our list of relevant pathways.
-
-```{r}
-camerares_dysplasia[camerares_dysplasia$FDR < 0.01, ]
-```
-
-We create a histogram of the p-values from the Camera results to visualize the distribution of significance levels across all tested pathways. This plot provides an overview of the significance of the pathways in relation to dysplasia.
-
-```{r}
-hist(camerares_dysplasia$PValue, xlab="P-value", main="Camera", las=1)
 ```
 
 
@@ -1447,8 +1438,19 @@ stats_smoker <- tt_smoker$t
 names(stats_smoker) <- rownames(tt_smoker)
 gseapermgsets_smoker <- fgsea(gsets_smoker, stats_smoker, minSize=5, maxSize=300)
 head(gseapermgsets_smoker[order(gseapermgsets_smoker$pval), ])
+```
+
+
+```{r}
 gseapermpheno_smoker[gseapermpheno_smoker$padj < 0.01, ]
 gseapermgsets_smoker[gseapermgsets_smoker$padj < 0.01, ]
+```
+
+```{r}
+significant_pathways_gsets_smoker <- gseapermgsets_smoker[gseapermgsets_smoker$padj < 0.01, ]
+significant_pathways_gsets_ordered_smoker <- significant_pathways_gsets_smoker[order(significant_pathways_gsets_smoker$padj), ]
+head(significant_pathways_gsets_ordered_smoker, n = 10)
+
 ```
 
 Visualize GSEA results.
@@ -1466,26 +1468,6 @@ Identify significant pathways.
 DEpwys <- gseapermgsets_smoker$pathway[gseapermgsets_smoker$padj < 0.01]
 plotGseaTable(gsets_smoker[DEpwys], stats_smoker, gseapermgsets_smoker, gseaParam=0.5)
 
-```
-
-Additional validation using Camera.
-
-```{r} 
-library(limma)
-gsetidx_smoker <- ids2indices(geneIds(gsc_smoker), rownames(se.filt))
-camerares_smoker <- camera(y=assays(se.filt)$logCPM, index=gsetidx_smoker, design=mod, contrast=2)
-head(camerares_smoker, 5)
-```
-
-Filter significant pathways from Camera.
-
-```{r}
-camerares_smoker[camerares_smoker$FDR < 0.01, ]
-```
-
-Visualise significant pathways from Camera for Smoking status.
-```{r}
-hist(camerares_smoker$PValue, xlab="P-value", main="Camera", las=1)
 ```
 
 # Discussion
@@ -1558,41 +1540,36 @@ This pathway involves the translation of viral mRNA within host cells. Smoking-i
 REACTOME_FORMATION_OF_A_POOL_OF_FREE_40S_SUBUNITS
 This pathway involves the formation of free 40S ribosomal subunits, which are crucial for the initiation of translation. Smoking can disrupt this process through oxidative stress and ribosomal damage, leading to impaired protein synthesis. Such dysregulation can contribute to uncontrolled cell growth and the development of dysplasia and cancer.
 
-REACTOME_INFLUENZA_VIRAL_RNA_TRANSCRIPTION_AND_REPLICATION
-This pathway describes the transcription and replication of influenza viral RNA, which can disrupt host cellular processes. Smoking-induced inflammation and oxidative stress can create an environment conducive to viral infections, further disrupting normal cellular functions and contributing to the development of dysplasia and cancer.
+REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT
+This pathway involves the hydrolysis of GTP and the subsequent joining of the 60S ribosomal subunit, which is essential for the formation of functional ribosomes and the initiation of protein synthesis. Smoking can interfere with this process by inducing oxidative stress and causing damage to ribosomal components. Such disruptions in ribosome assembly and function can lead to abnormal protein synthesis, which is a common feature in rapidly dividing cancer cells and precancerous conditions like dysplasia. Proper protein synthesis is crucial for maintaining normal cell growth and differentiation, and any impairment in this pathway can contribute to the cellular transformations seen in dysplasia and cancer.
+
 
 ### Current and former smoker results
 
-BIOCARTA_IL7_PATHWAY:
-The IL-7 pathway is essential for normal development of B cells and T cells in the immune system.
-Mice lacking the IL-7 receptor exhibit a deficiency in both B and T cells. Some humans with severe combined immunodeficiency disease (SCID) also have mutations in their IL-7 receptor gene, leading to impaired B cell production and T cell absence.
-For current smokers, chronic nicotine exposure may impact IL-7 signaling, affecting immune responses.
-Former smokers might see a return to baseline IL-7 signaling dynamics after quitting.
+REACTOME_INSULIN_SYNTHESIS_AND_SECRETION:
+The insulin synthesis and secretion pathway is crucial for regulating blood glucose levels and involves various cellular processes in the pancreas.
+In current smokers, chronic nicotine exposure can impair insulin production and secretion due to oxidative stress and inflammation, potentially leading to insulin resistance and increased risk of diabetes.
+For former smokers, quitting smoking may improve insulin sensitivity and normalize insulin secretion dynamics, reducing the risk of diabetes.
 
-BIOCARTA_PROTEASOME_PATHWAY:
-This pathway involves the proteasome, responsible for protein degradation.
-Proteasomes regulate protein turnover, impacting various cellular processes.
-Current smokers: Smoking-related oxidative stress may affect proteasome function.
-Former smokers: Proteasome activity may normalize after quitting.
+KEGG_OXIDATIVE_PHOSPHORYLATION:
+This pathway is essential for ATP production through the mitochondrial electron transport chain.
+In current smokers, smoking-induced oxidative stress can impair mitochondrial function and oxidative phosphorylation, leading to decreased cellular energy production and increased oxidative damage.
+For former smokers, cessation may lead to recovery of mitochondrial function and improved oxidative phosphorylation efficiency, enhancing overall cellular energy metabolism.
 
-BIOCARTA_SALMONELLA_PATHWAY:
-Relates to Salmonella infection.
-Salmonella is a pathogenic bacterium causing foodborne illness.
-Current smokers: Altered immune responses due to smoking might impact susceptibility to infections like Salmonella.
-Former smokers: Reduced exposure may decrease susceptibility.
+REACTOME_TRANSLATION:
+The translation pathway is vital for protein synthesis, involving ribosomal assembly and function.
+In current smokers, smoking-related oxidative stress and inflammation can disrupt ribosomal function and protein synthesis, contributing to abnormal cell growth and protein misfolding.
+Former smokers may experience a normalization of translation processes, improving protein synthesis and reducing the risk of cellular dysfunction.
 
-KEGG_ALLOGRAFT_REJECTION:
-Involves immune responses against transplanted tissues (allografts).
-Allograft rejection is influenced by immune activation.
-Current smokers: Smoking-related immune changes could affect allograft acceptance or rejection.
-Former smokers: Reduced exposure may improve allograft outcomes.
+REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT:
+This pathway involves the hydrolysis of GTP and the joining of the 60S ribosomal subunit, crucial for forming functional ribosomes.
+In current smokers, oxidative stress from smoking can interfere with ribosome assembly, impairing protein synthesis and contributing to cellular transformation and cancer risk.
+For former smokers, quitting smoking may lead to the recovery of ribosomal function and proper protein synthesis, reducing the likelihood of cellular abnormalities.
 
-KEGG_ALZHEIMERS_DISEASE:
-Relates to Alzheimer’s disease.
-Alzheimer’s involves neuroinflammation and protein misfolding.
-Current smokers: Smoking-associated oxidative stress and inflammation may increase Alzheimer’s risk.
-Former smokers: Risk reduction after quitting.
-
+REACTOME_GLUCOSE_REGULATION_OF_INSULIN_SECRETION:
+This pathway is involved in the regulation of insulin secretion in response to glucose levels.
+In current smokers, smoking can disrupt glucose regulation and insulin secretion through oxidative stress and inflammatory mechanisms, increasing the risk of metabolic disorders like diabetes.
+Former smokers might see improvements in glucose regulation and insulin secretion dynamics after quitting, lowering their risk of metabolic diseases.
 
 ## Results of Functional Analysis 
 
