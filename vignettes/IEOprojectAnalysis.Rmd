@@ -1350,7 +1350,7 @@ We then use the fgsea function to perform GSEA on this ranked list.
 ``` {r}
 stats_dysplasia <- tt_dysplasia$t
 names(stats_dysplasia) <- rownames(tt_dysplasia)
-gseapermgsets_dysplasia <- fgsea(gsets, stats, minSize=5, maxSize=300)
+gseapermgsets_dysplasia <- fgsea(gsets_dysplasia, stats_dysplasia, minSize=5, maxSize=300)
 head(gseapermgsets_dysplasia[order(gseapermgsets_dysplasia$pval), ])
 gseapermpheno_dysplasia[gseapermpheno_dysplasia$padj < 0.01, ]
 gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
@@ -1594,7 +1594,7 @@ Current smokers: Smoking-associated oxidative stress and inflammation may increa
 Former smokers: Risk reduction after quitting.
 
 
-## Results
+## Results of Functional Analysis 
 
 In our project, we aimed to explore the effects of smoking on cellular functions using Gene Set Enrichment Analysis (GSEA) and Gene Ontology (GO) analysis. We conducted these analyses on samples with dysplasia versus no dysplasia and current smokers versus former smokers.
 
