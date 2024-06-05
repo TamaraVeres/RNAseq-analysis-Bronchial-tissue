@@ -764,20 +764,20 @@ for Current smokers and another one for Former smokers. This leads us to
 assume these two groups have significant differences in their gene
 expression.
 
-### Question to Answer Formulation
+### Formulating the question to answer 
 
 Our Exploratory Data Analysis and new Experimental Design allowed us to identify a variable that raises interesting questions when faced with the prospect of investigating it: Smoking status.
 
-All of the samples in our dataset have either been or currently are smokers. Based on the results we’ve obtained on this first part of our project, we’ve decided to use this variable to design our new groups. We obtain: Current Smokers (n = r length(se.filtsmoker[se.filt
-smoker == “Current smoker”])) and Former smokers (n = r length(se.filtsmoker[se.filt
+All of the samples in our dataset have either been or currently are smokers. Based on the results we've obtained on this first part of our project, we've decided to use this variable to design our new groups. We obtain: Current Smokers (n = r length(se.filt$smoker[se.filt$smoker == "Current smoker"])) and Former smokers (n = r length(se.filt$smoker[se.filt$smoker == "Former smoker"])).
 
-smoker == “Former smoker”])).
+We're also interested in looking at another variable, seeing if it has statistically significant results, to be able to compare its findings to the Smoking status analysis. Based on our clustering, we have identified Dysplasia as a variable that clusters. Dysplasia, which is based on Histology level, assessing the damage in the tissue.
+It is relevan to see how Current vs. Former smokers differ and also which processes differentially involved in one of these groups is also related to airway tissue damage.
 
-Our goal is to find differentially expressed gene sets and pathways between these groups. To do so, we’ll perform Differential Expression Analysis with Linear Regression models, using Bioconductor’s limma pipeline Smyth (2004) Matthew E. Ritchie (2015). The results will be used to perform Functional Analysis using the Bioconductor package GOstats (Gene Ontology), and finally we’ll perform Gene Set Enrichment Analysis to obtain our final results.
+Our goal is to find differentially expressed gene sets and pathways between these groups. To do so, we'll perform Differential Expression Analysis with Linear Regression models, using Bioconductor's limma pipeline @limma-og @limma-update. The results will be used to perform Functional Analysis using the Bioconductor package GOstats (Gene Ontology), and finally we'll perform Gene Set Enrichment Analysis to obtain our final results.
 
-These results will help us gain an insight into How the genome changes once a person stops smoking.
+These results will help us gain an insight into How the genome changes once a person stops smoking, and wether or not pathways invoved in this are also involved in damage to airway tissue.
 
-From here on out, every step will be done once for the Dysplasia grouping (samples with PML vs without) to reproduce the paper’s findings, and once for the Smoking status grouping, to obtain our new results.
+From here on out, every step will be done once for the Dysplasia grouping (samples with PML vs without) to reproduce the paper's findings, and once for the Smoking status grouping, to obtain our new results.
 
 # Differential expression
 
@@ -1298,12 +1298,36 @@ c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),
 c2BroadSets
 ```
 
-We create a custom gene set (de_fc_smokerGS) using the Entrez IDs of differentially expressed genes in smoking status. We then combine this custom gene set with the previously filtered gene sets into a single Gene Set Collection (gsc).
+In order to do the GSEA anlysis we decided to compare our dataset with two more datasets from the MSigDB. One dataset represents the control group and the other the tumor group. We use the msigdbr library to access the Molecular Signatures Database (MSigDB) for the datasets. The dplyr library is used for data manipulation.
 
 ```{r}
-de_fc_smokerGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_smoker$EntrezID, setName="DE_FC_SMOKER")
-details(de_fc_smokerGS)
-gsc_smoker <- GeneSetCollection(c(c2BroadSets, de_fc_smokerGS))
+
+library(msigdbr)
+library(dplyr)
+msigdb_data <- msigdbr(species = "Homo sapiens")
+str(msigdb_data)
+control <- msigdb_data %>% filter(gs_name == "DESCARTES_FETAL_LUNG_BRONCHIOLAR_AND_ALVEOLAR_EPITHELIAL_CELLS")
+tumor <- msigdb_data %>% filter(gs_name == "DING_LUNG_CANCER_MUTATED_FREQUENTLY")
+
+
+
+
+```
+
+
+We create a custom gene set using the Entrez IDs of differentially expressed genes in smoking status. We then combine this custom gene set with the previously filtered gene sets into a single Gene Set Collection (gsc).
+
+```{r}
+library(GSEABase)
+control_genes <- as.character(unique(control$entrez_gene))
+control_GS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=control_genes, setName="CONTROL")
+details(control_GS)
+
+tumor_genes <- as.character(unique(tumor$entrez_gene))
+tumor_GS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=tumor_genes, setName="TUMOR")
+details(tumor_GS)
+
+gsc_smoker <- GeneSetCollection(c(c2BroadSets, control_GS, tumor_GS))
 gsets_smoker <- geneIds(gsc_smoker)
 ```
 
@@ -1352,8 +1376,8 @@ We also generate an enrichment plot for the custom gene set DE_FC_SMOKER to show
 par(mfrow=c(1, 2))
 hist(gseapermpheno_smoker$pval, xlab="P-value", main="Permuting phenotypes", las=1)
 hist(gseapermgsets_smoker$pval, xlab="P-value", main="Permuting gene sets", las=1)
-plotEnrichment(gsets_smoker$DE_FC_SMOKER, stats_smoker)
-
+plotEnrichment(gsets_smoker$CONTROL, stats_smoker)
+plotEnrichment(gsets_smoker$TUMOR, stats_smoker)
 ```
 
 We use this part of the code to identify pathways that are significantly enriched (adjusted p-value < 0.01). The plotGseaTable function then generates a table and plot of GSEA results for these significant pathways, showing the enrichment scores and p-values. This helps us visualize and interpret the most relevant pathways in our smoking status analysis.
@@ -1365,12 +1389,43 @@ plotGseaTable(gsets_smoker[DEpwys], stats_smoker, gseapermgsets_smoker, gseaPara
 
 ```
 
+We generate an HTML page so we can visualize more easily.
+
+```{r}
+library(kableExtra)
+gsea_tab_smoker <- kable(significant_pathways_gsets_ordered_smoker, "html", caption="GSEA Results Smoker")
+gsea_tab_smoker <- kable_styling(gsea_tab_smoker, bootstrap_options=c("stripped", "hover", "responsive"), fixed_thead=TRUE)
+save_kable(gsea_tab_smoker, file="../doc/gsea_results_smoker.html", self_contained=TRUE)
+```
+
+See the HTML page by clicking on this <a href="../doc/gsea_results_smoker.html" target="_blank">link</a>.
+
+
+We use the limma::camera function to perform an additional gene set analysis that adjusts for inter-gene correlation within gene sets. This step enhances the robustness of our findings by providing an alternative method to validate the significant pathways identified by GSEA. The camera function uses the same gene sets and design matrix as our previous analyses.
+
+```{r}
+gsetidx_smoker <- ids2indices(geneIds(gsc_smoker), rownames(se.filt))
+camerares_smoker <- camera(y=assays(se.filt)$logCPM, index=gsetidx_smoker, design=mod, contrast=2)
+head(camerares_smoker, 5)
+```
+
+
+We filter the Camera results to focus on pathways with an FDR < 0.01, ensuring we only consider the most significant pathways. This step helps us further refine our list of relevant pathways.
+```{r}
+camerares_smoker[camerares_smoker$FDR < 0.01, ]
+```
+
+We create a histogram of the p-values from the Camera results to visualize the distribution of significance levels across all tested pathways. This plot provides an overview of the significance of the pathways in relation to dysplasia.
+```{r}
+hist(camerares_smoker$PValue, xlab="P-value", main="Camera", las=1)
+```
 
 
 ### GSEA for Dysplasia (PML)
 
 We do the same steps as previously but now for the Dysplasia.
 Load the required libraries and data.
+
 ```{r}
 library(fgsea)
 library(GSVAdata)
@@ -1387,15 +1442,24 @@ c2BroadSets
 Create a costum gene set for Dysplasia.
 
 ```{r}
-de_fc_dysplasiaGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_dysplasia$EntrezID, setName="DE_FC_DYS")
-details(de_fc_dysplasiaGS)
-gsc_dysplasia <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS))
-gsets_dysplasia <- geneIds(gsc_dysplasia)
+
+library(GSEABase)
+control_genes <- as.character(unique(control$entrez_gene))
+control_GS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=control_genes, setName="CONTROL")
+details(control_GS)
+
+tumor_genes <- as.character(unique(tumor$entrez_gene))
+tumor_GS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=tumor_genes, setName="TUMOR")
+details(tumor_GS)
+
+gsc_dysplasia <- GeneSetCollection(c(c2BroadSets, control_GS, tumor_GS))
+gsets_dysplasia<- geneIds(gsc_dysplasia)
+
+  
 ```
 
 Prepare the data.
 ```{r}
-
 
 histology_factors_dysplasia <- factor(se.filt$dysplasia)
 histology_integers_dysplasia <- as.integer(histology_factors_dysplasia)
@@ -1440,7 +1504,8 @@ Create histograms of p-values and generate an enrichment plot.
 par(mfrow=c(1, 2))
 hist(gseapermpheno_dysplasia$pval, xlab="P-value", main="Permuting phenotypes", las=1)
 hist(gseapermgsets_dysplasia$pval, xlab="P-value", main="Permuting gene sets", las=1)
-plotEnrichment(gsets_dysplasia$DE_FC_DYS, stats_dysplasia)
+plotEnrichment(gsets_dysplasia$CONTROL, stats_dysplasia)
+plotEnrichment(gsets_dysplasia$TUMOR, stats_dysplasia)
 
 ```
 
@@ -1450,109 +1515,33 @@ Identify significant pathways.
 DEpwys_dysplasia <- significant_pathways_gsets_ordered_dysplasia$pathway
 plotGseaTable(gsets_dysplasia[DEpwys_dysplasia], stats_dysplasia, gseapermgsets_dysplasia, gseaParam=0.5)
 
+```
 
+Additional validation using Camera.
+
+
+```{r}
+library(limma)
+gsetidx_dysplasia <- ids2indices(geneIds(gsc_dysplasia), rownames(se.filt))
+camerares_dysplasia <- camera(y=assays(se.filt)$logCPM, index=gsetidx_dysplasia, design=mod, contrast=2)
+head(camerares_dysplasia, 5)
 ```
 
 
+Filter significant pathways from Camera.
 
-## Go Ontology
-
-### Current vs Former Smoker
-
-The Go terms with the highest Odds Ratio were tryptophan transport, valine transport and peptidyl-aspartic acid modification. This suggests that these processes are significantly different between current and former smokers.
-
-Tryptophan Transport (GO:0015827): Tryptophan is a precursor to serotonin, a neurotransmitter involved in mood regulation. Smoking has been associated with altered serotonin levels and mood disorders.
-Current smokers might have different tryptophan transport dynamics due to chronic exposure to nicotine, which could affect neurotransmitter synthesis and mental health, whereas former smokers might show a return to baseline levels.
-
-Valine Transport (GO:0015829): Valine is a branched-chain amino acid (BCAA) important for muscle metabolism and energy production. Smoking affects metabolic processes and energy balance.
-The differences in valine transport could reflect altered energy metabolism in current smokers, who may experience metabolic stress due to smoking-related oxidative damage.
-
-Peptidyl-Aspartic Acid Modification (GO:0018197): Post-translational modifications of proteins are crucial for their function. Smoking can induce oxidative stress, leading to changes in protein modification.
-Current smokers might have altered post-translational modifications due to the high oxidative stress from smoking, affecting protein function and cellular processes.
-
-Terpenoid Catabolic Process (GO:0016115): When it comes to Terpenoid Catabolic Process (GO:0016115), terpenoids include many bioactive compounds, some of which are found in tobacco smoke. The metabolism of these compounds is critical for detoxification. Current smokers may exhibit increased catabolism of terpenoids as their bodies work to break down harmful components of tobacco smoke, whereas former smokers may show reduced activity as the exposure decreases.
-
-Daunorubicin Metabolic Process (GO:0044597) and Doxorubicin Metabolic Process (GO:0044598): Daunorubicin and doxorubicin are metabolized in the body and smoking is known to influence drug metabolism. The differences observed could indicate that current smokers have altered drug metabolism capabilities, which might affect the efficacy and toxicity of medications compared to former smokers. 
-
-Sinoatrial Node Development (GO:0003163): The sinoatrial node is critical for heart rhythm regulation, and smoking is a known risk factor for cardiovascular diseases.
-Current smokers might exhibit changes in the development or function of the sinoatrial node, possibly due to chronic cardiovascular stress and exposure to harmful substances in smoke.
-
-Taurine Transport (GO:0015734): Taurine plays a role in cellular osmoregulation, bile salt formation, and antioxidation. Smoking affects many of these physiological processes. Differences in taurine transport could reflect adaptations to oxidative stress and altered bile acid metabolism in current smokers compared to former smokers.
-
-Isoleucine Transport (GO:0015820): Isoleucine, like valine, is a BCAA important for protein synthesis and energy metabolism. Smoking impacts overall metabolic health.
-Altered transport of isoleucine in current smokers might be a response to the increased metabolic demands and stress associated with chronic smoking.
-
-Thyroid Hormone Transport (GO:0070327): Thyroid hormones regulate metabolism, and smoking has been linked to changes in thyroid function.
-The differences in thyroid hormone transport could indicate that smoking affects the regulation and distribution of these hormones, impacting metabolic processes and overall health.
-
-### Dysplasia vs No Dysplasia Results
-
-7-methylguanosine cap hypermethylation (GO:0036261): This process is related to the modification of the mRNA cap structure, which is crucial for mRNA stability and translation. Smoking can induce changes in RNA processing and stability, potentially through increased oxidative stress and inflammation. These changes could lead to dysregulation of gene expression, contributing to dysplasia.
-
-Negative regulation of protein neddylation (GO:2000435): Neddylation is a post-translational modification affecting protein stability and function.
-Dysregulation of protein modifications, including neddylation, can be influenced by the cellular stress and inflammatory response induced by smoking. This could lead to altered protein function and contribute to the pathogenesis of dysplasia.
-
-Cytoplasmic translation (GO:0002181): Involves the synthesis of proteins in the cytoplasm.Smoking can affect protein synthesis by inducing endoplasmic reticulum stress and disrupting ribosomal function. Changes in protein synthesis are often seen in cancer and precancerous conditions like dysplasia.
-
-Mitochondrial electron transport, cytochrome c to oxygen (GO:0006123) & ubiquinol to cytochrome c (GO:0006122): Part of the mitochondrial respiratory chain involved in energy production. Smoking increases oxidative stress, which can damage mitochondria and impair electron transport. Mitochondrial dysfunction is a known factor in the development of many diseases, including cancer and dysplasia.
-
-Positive regulation of miRNA catabolic process (GO:2000627): miRNAs are small non-coding RNAs that regulate gene expression post-transcriptionally. Smoking can alter miRNA expression profiles, contributing to changes in gene regulation that can lead to dysplasia and cancer.
-
-Proton motive force-driven ATP synthesis (GO:0015986): This process is a part of cellular respiration where ATP is produced. Mitochondrial dysfunction due to smoking can disrupt ATP synthesis, leading to cellular energy deficits and promoting disease processes like dysplasia.
-
-Protein maturation by [4Fe-4S] cluster transfer (GO:0106035): This involves the assembly of iron-sulfur clusters, which are essential for various cellular processes, including DNA repair and electron transport. Oxidative stress from smoking can impair iron-sulfur cluster assembly, leading to defects in cellular metabolism and potentially contributing to dysplasia.
-
-Ribosomal small subunit assembly (GO:0000028) & Ribosomal small subunit biogenesis (GO:0042274): These are critical for the formation of functional ribosomes, which are essential for protein synthesis. Disruption in ribosome biogenesis can be caused by smoking-related oxidative stress and inflammation, affecting protein synthesis and cell growth, potentially leading to dysplasia.
+```{r}
+camerares_dysplasia[camerares_dysplasia$FDR < 0.01, ]
+```
 
 
-## GSEA
+Visualise significant pathways from Camera for Dysplasia.
 
-### Dysplasia vs no dysplasia results 
-
-The most significant pathways identified in this analysis are primarily related to protein synthesis and ribosome function, indicating that these processes are notably dysregulated in dysplasia. The high significance of these pathways (with p-values less than 1e-50) underscores their potential role in the pathogenesis of dysplasia and their importance as areas for further investigation. The pathways are listed below: 
-
-KEGG_RIBOSOME
-This pathway involves the synthesis and function of ribosomes, essential for protein synthesis. Smoking can disrupt ribosomal biogenesis and function, leading to altered protein synthesis. Such disruptions are common in rapidly dividing cancer cells and precancerous conditions like dysplasia, where proper protein synthesis is vital for normal cell growth and differentiation.
-
-REACTOME_PEPTIDE_CHAIN_ELONGATION
-Peptide chain elongation is a critical step in translation where amino acids are added to the growing peptide chain. Smoking can lead to dysregulated elongation through oxidative stress and inflammatory responses, resulting in abnormal protein synthesis and contributing to cellular transformation seen in dysplasia and cancer.
-
-REACTOME_VIRAL_MRNA_TRANSLATION
-This pathway involves the translation of viral mRNA within host cells. Smoking-induced inflammation and oxidative stress can create a cellular environment that facilitates viral infections and disrupts normal mRNA translation processes, contributing to cellular dysfunction and the development of dysplasia and cancer.
-
-REACTOME_FORMATION_OF_A_POOL_OF_FREE_40S_SUBUNITS
-This pathway involves the formation of free 40S ribosomal subunits, which are crucial for the initiation of translation. Smoking can disrupt this process through oxidative stress and ribosomal damage, leading to impaired protein synthesis. Such dysregulation can contribute to uncontrolled cell growth and the development of dysplasia and cancer.
-
-REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT
-This pathway involves the hydrolysis of GTP and the subsequent joining of the 60S ribosomal subunit, which is essential for the formation of functional ribosomes and the initiation of protein synthesis. Smoking can interfere with this process by inducing oxidative stress and causing damage to ribosomal components. Such disruptions in ribosome assembly and function can lead to abnormal protein synthesis, which is a common feature in rapidly dividing cancer cells and precancerous conditions like dysplasia. Proper protein synthesis is crucial for maintaining normal cell growth and differentiation, and any impairment in this pathway can contribute to the cellular transformations seen in dysplasia and cancer.
+```{r}
+hist(camerares_dysplasia$PValue, xlab="P-value", main="Camera", las=1)
+```
 
 
-### Current and former smoker results
-
-REACTOME_INSULIN_SYNTHESIS_AND_SECRETION:
-The insulin synthesis and secretion pathway is crucial for regulating blood glucose levels and involves various cellular processes in the pancreas.
-In current smokers, chronic nicotine exposure can impair insulin production and secretion due to oxidative stress and inflammation, potentially leading to insulin resistance and increased risk of diabetes.
-For former smokers, quitting smoking may improve insulin sensitivity and normalize insulin secretion dynamics, reducing the risk of diabetes.
-
-KEGG_OXIDATIVE_PHOSPHORYLATION:
-This pathway is essential for ATP production through the mitochondrial electron transport chain.
-In current smokers, smoking-induced oxidative stress can impair mitochondrial function and oxidative phosphorylation, leading to decreased cellular energy production and increased oxidative damage.
-For former smokers, cessation may lead to recovery of mitochondrial function and improved oxidative phosphorylation efficiency, enhancing overall cellular energy metabolism.
-
-REACTOME_TRANSLATION:
-The translation pathway is vital for protein synthesis, involving ribosomal assembly and function.
-In current smokers, smoking-related oxidative stress and inflammation can disrupt ribosomal function and protein synthesis, contributing to abnormal cell growth and protein misfolding.
-Former smokers may experience a normalization of translation processes, improving protein synthesis and reducing the risk of cellular dysfunction.
-
-REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT:
-This pathway involves the hydrolysis of GTP and the joining of the 60S ribosomal subunit, crucial for forming functional ribosomes.
-In current smokers, oxidative stress from smoking can interfere with ribosome assembly, impairing protein synthesis and contributing to cellular transformation and cancer risk.
-For former smokers, quitting smoking may lead to the recovery of ribosomal function and proper protein synthesis, reducing the likelihood of cellular abnormalities.
-
-REACTOME_GLUCOSE_REGULATION_OF_INSULIN_SECRETION:
-This pathway is involved in the regulation of insulin secretion in response to glucose levels.
-In current smokers, smoking can disrupt glucose regulation and insulin secretion through oxidative stress and inflammatory mechanisms, increasing the risk of metabolic disorders like diabetes.
-Former smokers might see improvements in glucose regulation and insulin secretion dynamics after quitting, lowering their risk of metabolic diseases.
 
 # Discussion
 
@@ -1584,7 +1573,15 @@ Collectively, these findings underscore the broad impact of smoking on critical 
 
 # Conclusions
 
-Here we summarize our conclusions.
+In our analysis of the effects of smoking on cellular functions using Differential Expression (DE), Gene Ontology (GO), and Gene Set Enrichment Analysis (GSEA) on RNA-seq data, we discovered significant molecular alterations between current and former smokers, and individuals with and without dysplasia.
+
+Smoking leads to major changes in gene expression, with some genes upregulated up to 26 times. Tryptophan, valine, and isoleucine transport alterations in current smokers reflect impacts on serotonin levels, energy metabolism, and metabolic stress. Oxidative stress from smoking alters post-translational modifications and increases the catabolism of harmful substances, while also impairing mitochondrial electron transport and ATP synthesis, causing energy deficits and cellular damage. Cardiovascular and thyroid functions are affected, influencing sinoatrial node development and thyroid hormone transport.
+
+Ribosomal function and protein synthesis are significantly disrupted by smoking. Impairments in ribosomal biogenesis and function in both dysplasia and current smokers link smoking to increased cancer risk. Dysplasia samples show notable changes in RNA processing, protein synthesis, and mitochondrial function, indicating smoking-related disruptions. Pathways like cytoplasmic translation and peptide chain elongation are particularly affected, contributing to disease development.
+
+Smoking also impacts insulin synthesis and glucose regulation pathways, increasing the risk of insulin resistance and type 2 diabetes. Differences in drug metabolism suggest altered efficacy and toxicity of medications due to smoking. The transport of essential molecules, such as amino acids and thyroid hormones, is affected, impacting nutrient uptake and hormone distribution.
+
+Former smokers show signs of recovery in many cellular processes, including ribosomal function and oxidative phosphorylation, highlighting the benefits of quitting smoking. Overall, our findings underscore the extensive and detrimental effects of smoking on critical biological pathways, contributing to various smoking-related diseases.
 
 # Session information
 
