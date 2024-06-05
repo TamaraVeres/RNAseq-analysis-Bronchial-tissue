@@ -1515,6 +1515,17 @@ plotGseaTable(gsets_dysplasia[DEpwys_dysplasia], stats_dysplasia, gseapermgsets_
 
 ```
 
+We generate an HTML page so we can visualize more easily.
+```{r}
+library(kableExtra)
+gsea_tab <- kable(significant_pathways_gsets_ordered_dysplasia, "html", caption="GSEA Results Dysplasia")
+gsea_tab <- kable_styling(gsea_tab, bootstrap_options=c("stripped", "hover", "responsive"), fixed_thead=TRUE)
+save_kable(gsea_tab, file="../doc/gsea_results_dysplasia.html", self_contained=TRUE)
+```
+See the HTML page by clicking on this <a href="../doc/gsea_results_dysplasia.html" target="_blank">link</a>.
+
+
+
 Additional validation using Camera.
 
 
