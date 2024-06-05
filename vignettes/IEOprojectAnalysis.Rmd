@@ -1,5 +1,5 @@
 ---
-title: "IEO Project Analysis"
+title: "Gene Expression Analysis of RNA-seq in Bronchial Tissue: Premalignant Lung Lesions and Current Smoking Status"
 author:
 - name: "Radostina Kisleva, Emma Juan Salazar, Tamara-Dora Veres"
   affiliation: Universitat Pompeu Fabra
@@ -79,9 +79,11 @@ The resulting raw RNA-seq data has been deposited at the Gene
 Expression Omnibus (GEO), where they are publicly available under
 accession [GSE79209](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE79209).
 
-In this project, one of our goals is to reproduce the findings in the peper, but we also want to extract further conclusions from this dataset. We'll perform an Exploratory Data Analysis of the corresponding RNA-seq gene expression profiles generated as a table of counts using the DEE2 (<https://dee2.io>) pipeline by @ziemann19, and further packaged into a [SummarizedExperiment](https://bioconductor.org/packages/SummarizedExperiment) object with genes mapped to Entrez identifiers. This object also stores the phenotypic information about the profiled samples that has been also made available at GEO.
+One of our goals for this project is to reproduce the findings of the original paper. The main purpose, however, is to find a new question we can pose that this dataset will be able to provide answers for.
 
-While exploring these objects, all the while doing a quality assessment and normalization of the data, we've found a new focus that the RNA-seq dataset could shed some light onto. Hierarchical clustering of the samples has made evident the importance of the distinction /smoking status/ in the samples (wether they're a current smoker or a former smoker). Therefore, we decided to explore this and do Differential Expression Analysis and Functional Analysis based on the sample's smoking status.
+We'll perform an Exploratory Data Analysis of the corresponding RNA-seq gene expression profiles generated as a table of counts using the DEE2 (<https://dee2.io>) pipeline by @ziemann19, and further packaged into a [SummarizedExperiment](https://bioconductor.org/packages/SummarizedExperiment) object with genes mapped to Entrez identifiers. This object also stores the phenotypic information about the profiled samples that has been also made available at GEO.
+
+The EDA will allow us to look further into the dataset and have enough information for a new Experimental Design. Hierarchical clustering and batch identification will assist us in choosing a new way to group the 82 samples, with the goal of finding differentially expressed gene sets and pathways between these groups.
 
 # Quality assessment
 
@@ -787,6 +789,18 @@ for Current smokers and another for Former smokers. This leads us to
 assume these two groups have significant differences in their gene
 expression.
 
+### The new problem
+
+Our Exploratory Data Analysis and new Experimental Design allowed us to identify a variable that raises interesting questions when faced with the prospect of investigating it: Smoking status.
+
+All of the samples in our dataset have either been or currently are smokers. Based on the results we've obtained on this first part of our project, we've decided to use this variable to design our new groups. We obtain: Current Smokers (n = r length(se.filt$smoker[se.filt$smoker == "Current smoker"])) and Former smokers (n = r length(se.filt$smoker[se.filt$smoker == "Former smoker"])).
+
+Our goal is to find differentially expressed gene sets and pathways between these groups. To do so, we'll perform Differential Expression Analysis with Linear Regression models, using Bioconductor's limma pipeline @limma-og @limma-update. The results will be used to perform Functional Analysis using the Bioconductor package GOstats (Gene Ontology), and finally we'll perform Gene Set Enrichment Analysis to obtain our final results.
+
+These results will help us gain an insight into How the genome changes once a person stops smoking.
+
+From here on out, every step will be done once for the Dysplasia grouping (samples with PML vs without) to reproduce the paper's findings, and once for the Smoking status grouping, to obtain our new results.
+
 # Differential expression
 
 The next step is to do a Differential Expression Analysis. At first
@@ -819,46 +833,6 @@ across expression levels).
 
 We'll see how many genes change their expression between the two groups
 using two different classifications.
-
-### PML (Dysplasia)
-
-The two main groups we want to contrast are samples with premalignant
-legions (PML) and samples without them. Thas is why our oucome target is
-Dysplasia.
-
-```{r}
-no_dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="no dysplasia"])
-dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="dysplasia"])
-```
-
-We can now calculate fold-change values for each gene in these two
-groups.
-
-```{r}
-log2fc_dysplasia <- dysplasia - no_dysplasia
-ranking <- order(abs(log2fc_dysplasia), decreasing=TRUE)
-fold_change_dysplasia <- data.frame(EntrezID=names(log2fc_dysplasia[ranking]),
-                                    Log2FC=round(log2fc_dysplasia[ranking], digits=3),
-                                    FC=round(2^log2fc_dysplasia[ranking], digits=3),
-                                    "1/FC"=round(2^(-log2fc_dysplasia[ranking]), digits=3),
-                                    row.names=rowData(se.filt)$symbol[ranking],
-                                    check.names=FALSE)
-de_fc_dysplasia <- head(fold_change_dysplasia, n=10)
-de_fc_dysplasia
-```
-
-In the resulting Data Frame:
-
--   If a gene has a **positive** Log2FC value, it means said gene is
-    **FC** times more upregulated in samples with *Dysplasia* compared
-    to in samples *without Dysplasia*.
-
--   If a gene has a **negative** Log2FC value, it means said gene is
-    **1/FC** times more upregulated in patients *without Dysplasia*
-    compared to in patients with *Dysplasia*
-
-    -   For example, CLDN18 is more upregulated in samples with
-        Dysplasia than in samples without Dysplasia
 
 ### Smoking status
 
@@ -904,6 +878,46 @@ In the resulting Data Frame:
 
 We can clearly see the difference of expression between groups is larger
 with the smoking status distinction than the dysplasia one.
+
+### PML (Dysplasia)
+
+The two main groups we want to contrast are samples with premalignant
+legions (PML) and samples without them. Thas is why our oucome target is
+Dysplasia.
+
+```{r}
+no_dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="no dysplasia"])
+dysplasia <- rowMeans(logCPM[, se.filt$dysplasia=="dysplasia"])
+```
+
+We can now calculate fold-change values for each gene in these two
+groups.
+
+```{r}
+log2fc_dysplasia <- dysplasia - no_dysplasia
+ranking <- order(abs(log2fc_dysplasia), decreasing=TRUE)
+fold_change_dysplasia <- data.frame(EntrezID=names(log2fc_dysplasia[ranking]),
+                                    Log2FC=round(log2fc_dysplasia[ranking], digits=3),
+                                    FC=round(2^log2fc_dysplasia[ranking], digits=3),
+                                    "1/FC"=round(2^(-log2fc_dysplasia[ranking]), digits=3),
+                                    row.names=rowData(se.filt)$symbol[ranking],
+                                    check.names=FALSE)
+de_fc_dysplasia <- head(fold_change_dysplasia, n=10)
+de_fc_dysplasia
+```
+
+In the resulting Data Frame:
+
+-   If a gene has a **positive** Log2FC value, it means said gene is
+    **FC** times more upregulated in samples with *Dysplasia* compared
+    to in samples *without Dysplasia*.
+
+-   If a gene has a **negative** Log2FC value, it means said gene is
+    **1/FC** times more upregulated in patients *without Dysplasia*
+    compared to in patients with *Dysplasia*
+
+    -   For example, CLDN18 is more upregulated in samples with
+        Dysplasia than in samples without Dysplasia
 
 ## Linear Regression to analyze Differential Expression
 
