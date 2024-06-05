@@ -340,6 +340,7 @@ In Table \@ref(tab:pheno) below, we show the five variables of interest
 jointly to gather as much understanding as possible on the underlying
 experimental design.
 
+
 ```{r pheno, echo=FALSE, message=FALSE}
 tmpdf <- data.frame(Identifer=colnames(se),
                     Age=se$age_intervals,
@@ -350,14 +351,11 @@ tmpdf <- data.frame(Identifer=colnames(se),
                     Histology=se$histology,
                     Dysplasia=se$dysplasia,
                     check.names=FALSE)
-short_tmpdf <- head(tmpdf, 40)
-ktab <- kable(short_tmpdf, caption="Phenotypical variables (first 40 rows).")
+ktab <- kable(tmpdf, caption="Phenotypical variables.")
 ktab <- kable_styling(ktab, position="center")
-save_kable(ktab, file="../doc/phenotypical_variables.html", self_contained=TRUE)
+
+
 ```
-
-To see the full table for all samples click <a href="../doc/phenotypical_variables.html" target="_blank">link</a>.
-
 
 ## Sequencing depth
 
@@ -764,7 +762,7 @@ for Current smokers and another one for Former smokers. This leads us to
 assume these two groups have significant differences in their gene
 expression.
 
-### Formulating the question to answer 
+## Formulating the question to answer 
 
 Our Exploratory Data Analysis and new Experimental Design allowed us to identify a variable that raises interesting questions when faced with the prospect of investigating it: Smoking status.
 
@@ -777,7 +775,7 @@ Our goal is to find differentially expressed gene sets and pathways between thes
 
 These results will help us gain an insight into How the genome changes once a person stops smoking, and wether or not pathways invoved in this are also involved in damage to airway tissue.
 
-From here on out, every step will be done once for the Dysplasia grouping (samples with PML vs without) to reproduce the paper's findings, and once for the Smoking status grouping, to obtain our new results.
+From hereon, every step will be done once for the Dysplasia grouping (samples with PML vs without) and then for the Smoking status grouping, to obtain our new results.
 
 # Differential expression
 
@@ -1545,9 +1543,11 @@ hist(camerares_dysplasia$PValue, xlab="P-value", main="Camera", las=1)
 
 # Discussion
 
-We ended up following two different pipelines and therefore reached two sets of results: one aims at reproducing the results found in the original @Beane17, and the other follows what has become our new question to be answered by analyzing this RNA-seq dataset: "How does the genome change between people that currently smoked versus people that have quit smoking?"
+We ended up following two different pipelines and therefore reached two sets of differentially expressed genes and pathways. This proved to be fruitful seeing as both current vs. former smokers and dysplasia vs. no dysplasia have statistically significant differencial expression. The results of the differential expression were significant enough to perform functional analysis on and find out how the genome changes between current smokers vs former smokers, and how does it affect the state of their ariway tissue (dysplasia).
 
 We decided on this aim for our analysis because of the results we got from doing Experimental Data Analysis on the dataset. We looked at all of the phenotypical and technical variables to find something that may be worth of interest or that might output statistical significant results. What we found during Experimental Dessign and batch identification is that our samples clustered together (with some exceptions) in two groups. After some trial and error, we found the reason for this clustering is the divide between the groups of samples that are current smokers vs. former smokers. We went ahead and decided to explore this path.
+
+A second analysis seemed pertinent, on a different variable to be able to compare the two. Dysplasia vs. no dysplasia was an appropriate group, especially since it describes the state of damage of the tissue, which should be related to wether or not someone smokes.
 
 As we suspected during EDA and Experimental Design, the results from our Differential Expression Analysis in Current smokers vs. Former smokers were of high statistical significance. We found a very high number of DE genes, some of the top ones being up until 26 times more upregulated in one group. Our distribution of p-values shows how most of them are very close to 0, and the volcano plot also helps confirm there is significant Differential Gene Expression between samples belonging to former smokers vs. samples belonging to current smokers.
 
@@ -1573,15 +1573,14 @@ Collectively, these findings underscore the broad impact of smoking on critical 
 
 # Conclusions
 
+Differential Expression and Functional Analysis allowed us to identify differentially expressed genes and pathways between current smokers and former smokers, as well as samples with damaged lung tissue (dysplasia) vs. healthy lung tissue (no dysplasia).
+
+We wanted to gain some insight into the effects of smoking on the airway, and whether or not there is significance in smokers vs. people that quit smoking. The fact that there is very significant differential expression between these groups, and that there are pathways that are differentially expressed, tells us that there are significant changes to the genome once the smoking stops. Comparing it to dysplasia status, and seeing so many pathways that are differentially expressed in one classification as well as the other, could indicate there's a correlation between Histology degree and the smoking habit.
+
 In our analysis of the effects of smoking on cellular functions using Differential Expression (DE), Gene Ontology (GO), and Gene Set Enrichment Analysis (GSEA) on RNA-seq data, we discovered significant molecular alterations between current and former smokers, and individuals with and without dysplasia.
 
-Smoking leads to major changes in gene expression, with some genes upregulated up to 26 times. Tryptophan, valine, and isoleucine transport alterations in current smokers reflect impacts on serotonin levels, energy metabolism, and metabolic stress. Oxidative stress from smoking alters post-translational modifications and increases the catabolism of harmful substances, while also impairing mitochondrial electron transport and ATP synthesis, causing energy deficits and cellular damage. Cardiovascular and thyroid functions are affected, influencing sinoatrial node development and thyroid hormone transport.
+Even though our process did yield significant results, we think it's still superficial. We could add to this analysis by also sequencing genome from samples that never smoked, or try and go further into the changes the genome goes through once one stops smoking. We think this is a very relevant topic seeing as smoking is still really prevalent, and lung cancer is one of the leading causes of death in the United States.
 
-Ribosomal function and protein synthesis are significantly disrupted by smoking. Impairments in ribosomal biogenesis and function in both dysplasia and current smokers link smoking to increased cancer risk. Dysplasia samples show notable changes in RNA processing, protein synthesis, and mitochondrial function, indicating smoking-related disruptions. Pathways like cytoplasmic translation and peptide chain elongation are particularly affected, contributing to disease development.
-
-Smoking also impacts insulin synthesis and glucose regulation pathways, increasing the risk of insulin resistance and type 2 diabetes. Differences in drug metabolism suggest altered efficacy and toxicity of medications due to smoking. The transport of essential molecules, such as amino acids and thyroid hormones, is affected, impacting nutrient uptake and hormone distribution.
-
-Former smokers show signs of recovery in many cellular processes, including ribosomal function and oxidative phosphorylation, highlighting the benefits of quitting smoking. Overall, our findings underscore the extensive and detrimental effects of smoking on critical biological pathways, contributing to various smoking-related diseases.
 
 # Session information
 
