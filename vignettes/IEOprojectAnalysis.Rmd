@@ -352,7 +352,7 @@ tmpdf <- data.frame(Identifer=colnames(se),
                     Dysplasia=se$dysplasia,
                     check.names=FALSE)
 ktab <- kable(tmpdf, caption="Phenotypical variables.")
-ktab <- kable_styling(ktab, position="center")
+kable_styling(ktab, position="center")
 
 
 ```
@@ -1523,8 +1523,6 @@ gsea_tab <- kable_styling(gsea_tab, bootstrap_options=c("stripped", "hover", "re
 save_kable(gsea_tab, file="../doc/gsea_results_dysplasia.html", self_contained=TRUE)
 ```
 See the HTML page by clicking on this <a href="../doc/gsea_results_dysplasia.html" target="_blank">link</a>.
-
-
 
 Additional validation using Camera.
 
