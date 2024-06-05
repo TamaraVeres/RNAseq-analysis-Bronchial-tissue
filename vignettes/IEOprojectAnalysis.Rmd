@@ -1470,11 +1470,10 @@ plotGseaTable(gsets_smoker[DEpwys], stats_smoker, gseapermgsets_smoker, gseaPara
 
 ```
 
-# Discussion
 
-## Current vs Former Smoker Results
+## Go Ontology
 
-### Go Ontology
+### Current vs Former Smoker
 
 The Go terms with the highest Odds Ratio were tryptophan transport, valine transport and peptidyl-aspartic acid modification. This suggests that these processes are significantly different between current and former smokers.
 
@@ -1502,7 +1501,7 @@ Altered transport of isoleucine in current smokers might be a response to the in
 Thyroid Hormone Transport (GO:0070327): Thyroid hormones regulate metabolism, and smoking has been linked to changes in thyroid function.
 The differences in thyroid hormone transport could indicate that smoking affects the regulation and distribution of these hormones, impacting metabolic processes and overall health.
 
-## Dysplasia vs No Dysplasia Results
+### Dysplasia vs No Dysplasia Results
 
 7-methylguanosine cap hypermethylation (GO:0036261): This process is related to the modification of the mRNA cap structure, which is crucial for mRNA stability and translation. Smoking can induce changes in RNA processing and stability, potentially through increased oxidative stress and inflammation. These changes could lead to dysregulation of gene expression, contributing to dysplasia.
 
@@ -1571,25 +1570,27 @@ This pathway is involved in the regulation of insulin secretion in response to g
 In current smokers, smoking can disrupt glucose regulation and insulin secretion through oxidative stress and inflammatory mechanisms, increasing the risk of metabolic disorders like diabetes.
 Former smokers might see improvements in glucose regulation and insulin secretion dynamics after quitting, lowering their risk of metabolic diseases.
 
-## Results of Functional Analysis 
+# Discussion
 
-In our project, we aimed to explore the effects of smoking on cellular functions using Gene Set Enrichment Analysis (GSEA) and Gene Ontology (GO) analysis. We conducted these analyses on samples with dysplasia versus no dysplasia and current smokers versus former smokers.
+In our analysis, we aimed to explore the effects of smoking on cellular functions using Gene Set Enrichment Analysis (GSEA) and Gene Ontology (GO) analysis. We conducted these analyses on samples with dysplasia versus no dysplasia and current smokers versus former smokers.
 
-Both GSEA and GO analysis revealed that smoking significantly impacts various cellular pathways. A key finding across both analyses was the consistent identification of pathways related to ribosomal function and protein synthesis. Specifically, we found that smoking affects the expression and function of ribosomal proteins, which are critical for protein biogenesis.
+Both GSEA and GO analysis in our sets of DE genes (dysplasia vs no dysplasia and current vs former smoker) revealed that smoking significantly impacts various cellular pathways, particularly those related to ribosomal function, protein synthesis, mitochondrial function, and metabolic processes (REACTOME_TRANSLATION, REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT, and REACTOME_FORMATION_OF_A_POOL_OF_FREE_40S_SUBUNITS). This illustrates that chronic exposure to cigarette smoke can lead to oxidative stress, damaging cellular components and disrupting normal protein synthesis and function.
 
-Our findings align with the study by Park et al. (2021) published in Scientific Reports, which also identified a detrimental effect of smoking on ribosomal function and protein synthesis. This study found that exposure to electronic cigarette smoke reduces ribosomal protein gene expression, impairing protein synthesis in primary human airway epithelial cells. The reduced expression of ribosomal proteins and subsequent impairment in protein synthesis could lead to various cellular dysfunctions.
+Smoking affects the expression and function of ribosomal proteins, which are critical for protein biogenesis. Our findings align with the study by Park et al. (2021) published in Scientific Reports, which also identified a detrimental effect of smoking on ribosomal function and protein synthesis. Exposure to electronic cigarette smoke reduces ribosomal protein gene expression, impairing protein synthesis in primary human airway epithelial cells. The reduced expression of ribosomal proteins and subsequent impairment in protein synthesis could lead to various cellular dysfunctions and contribute to the pathogenesis of various smoking-related diseases, including cancer. 
 
-The impairment of ribosomal function may contribute to the pathogenesis of various smoking-related diseases, including cancer. The referenced study highlighted the potential for smoking to induce carcinogenesis through the disruption of ribosomal biogenesis and protein synthesis, which are critical for maintaining cellular homeostasis.
+Further findings indicate that smoking disrupts cytoplasmic translation and peptide chain elongation. The study by Merzah et al. (2023) supports these observations, revealing differentially expressed genes (DEGs) related to immune response and inflammation pathways in smokers. Smoking leads to significant downregulation of genes involved in oxygen binding and activity, emphasizing the role of oxidative stress in disrupting cellular functions, contributing to disease development.
 
-Further findings indicate that smoking disrupts cytoplasmic translation and peptide chain elongation.The adverse effects of smoking on ribosomal function and protein synthesis were further supported by the study of Merzah et al. (2023), which identified differentially expressed genes (DEGs) related to immune response and inflammation pathways in smokers. The study revealed that smoking leads to a significant downregulation of genes involved in oxygen binding and activity, emphasizing the role of oxidative stress in disrupting cellular functions.
+Additionally, our analyses identified pathways related to mitochondrial electron transport and ATP synthesis ((KEGG_OXIDATIVE_PHOSPHORYLATION). Smoking introduces numerous toxins that induce oxidative stress, resulting in the production of reactive oxygen species (ROS), which can damage cellular components, including mitochondria. This oxidative stress impairs mitochondrial function, leading to a cascade of detrimental effects on cellular health. The study by Kanithi et al. (2022) highlighted the impact of cigarette smoke and e-cigarette vapor on mitochondrial function by increasing oxidative stress, disrupting mitochondrial morphology, and impairing critical processes such as fusion, fission, and mitophagy.
 
-The findings highlight the potential role of impaired protein synthesis in the pathogenesis of smoking-related diseases, including cancer and coronary artery disease (CAD). The study by Merzah et al. (2023) supports the link between smoking, oxidative stress, and the disruption of critical cellular pathways, contributing to disease development.
+Smoking-induced oxidative stress damages the electron transport chain, leading to reduced ATP production and impaired cellular energy metabolism. The resulting energy deficit can hinder cellular processes, contributing to the development of diseases such as cancer and cardiovascular conditions. The study by @Tan08 concluded that cigarette smoke exposure affects mtDNA in buccal cells of smokers. Additionally, @Fetterman17 reported that active and passive cigarette smoke decreases mitochondrial respiration and membrane potential, leading to decreased ATP content and increased oxidant production in various tissues, exacerbating cellular dysfunction and contributing to smoking-related diseases.
 
-Other pathways identified in our analyses were related to mitochondrial electron transport and ATP synthesis, emphasizing how smoking-induced oxidative stress disrupts cellular functions. Smoking introduces numerous toxins that induce oxidative stress, resulting in the production of reactive oxygen species (ROS) which can damage cellular components, including mitochondria. This oxidative stress impairs mitochondrial function, leading to a cascade of detrimental effects on cellular health. As highlighted in the study by Kanithi et al. (2022), toxins in cigarette smoke and e-cigarette vapor significantly damage mitochondrial function by increasing oxidative stress, disrupting mitochondrial morphology, and impairing critical processes such as fusion, fission, and mitophagy. 
+Pathways like REACTOME_INSULIN_SYNTHESIS_AND_SECRETION and REACTOME_GLUCOS_REGULATION_OF_INSULIN_SECRETION point to potential disruptions in insulin signaling. Smoking has been associated with insulin resistance (@Facchini92) and an increased risk of developing type 2 diabetes (@Will01) This could be due to inflammation and oxidative stress induced by smoking, affecting pancreatic beta cells' ability to produce insulin and cells' sensitivity to insulin.
 
-Our analyses also identified significant disruptions in pathways related ATP synthesis. These processes are crucial for cellular energy production and overall mitochondrial health. Smoking-induced oxidative stress damages the electron transport chain, leading to reduced ATP production and impaired cellular energy metabolism. The resulting energy deficit can hinder cellular processes, contributing to the development of diseases such as cancer and cardiovascular conditions.
+GO terms such as tryptophan transport, valine transport, and thyroid hormone transport highlight changes in the transport of essential molecules. Smoking can alter the expression of various transporters on cell membranes, impacting nutrient uptake and hormone distribution. @Babic21 concluded that smoking leads to a decrease in TSH levels and an increase in T3 and T4 levels. The mechanism through which cigarette smoking affects TSH and thyroid hormone levels remains unclear. Changes in amino acid transport can affect protein synthesis and cellular repair mechanisms.
 
+The GO terms daunorubicin metabolic process and doxorubicin metabolic process suggest differences in how former and current smokers metabolize specific substances. These findings align with research showing that smoking induces certain cytochrome P450 enzymes involved in drug metabolism, leading to altered pharmacokinetics and potentially affecting the efficacy and toxicity of various medications (@Zhao21).
 
+Collectively, these findings underscore the broad impact of smoking on critical biological functions, affecting everything from protein synthesis to metabolic and transport processes. The impairment of these pathways highlights the profound and multifaceted consequences of smoking on cellular health, contributing to the development of various smoking-related diseases.
 
 # Conclusions
 
