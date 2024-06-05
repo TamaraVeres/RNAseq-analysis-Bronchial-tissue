@@ -1297,102 +1297,12 @@ kable_styling(ktab, position="center")
 
 ## Gene Set Enrichment Analysis
 
-The second part of the functional analysis involves performing Gene Set Enrichment Analysis (GSEA), a computational method used to determine if predefined sets of genes show statistically significant and concordant differences between two biological states (e.g., phenotypes). In our study, we will conduct GSEA for two comparisons: identifying pathways significantly enriched between the presence and absence of premalignant lesions (PMLs) and between current and former smokers.
-
-### GSEA for Dysplasia (PML)
-
-We load the necessary libraries: fgsea for GSEA, GSVAdata for gene set data, and GSEABase for gene set collection handling. We load the c2BroadSets dataset, which contains gene sets from KEGG, REACTOME, and BIOCARTA pathways. 
-```{r}
-library(fgsea)
-library(GSVAdata)
-library(GSEABase)
-data(c2BroadSets)
-
-c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),
-  +                              grep("^REACTOME", names(c2BroadSets)),
-  +                              grep("^BIOCARTA", names(c2BroadSets)))]
-c2BroadSets
-
-```
-
-We create a custom gene set (de_fc_dysplasiaGS) using the Entrez IDs of differentially expressed genes in dysplasia. We then combine this custom gene set with the previously filtered gene sets into a single Gene Set Collection (gsc)
-
-```{r}
-de_fc_dysplasiaGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_dysplasia$EntrezID, setName="DE_FC_DYS")
-details(de_fc_dysplasiaGS)
-gsc_dysplasia <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS))
-gsets_dysplasia <- geneIds(gsc_dysplasia)
-```
-
-We prepare the data by converting the histology information into factors and then into integers.
-
-```{r}
-
-
-histology_factors_dysplasia <- factor(se.filt$dysplasia)
-histology_integers_dysplasia <- as.integer(histology_factors_dysplasia)
-
-levels(histology_factors_dysplasia)
-histology_integers_dysplasia
-```
-
-We use the fgseaLabel function to perform GSEA by permuting phenotypes 10,000 times to compute enrichment scores and p-values for each gene set.
-```{r}
-
-gseapermpheno_dysplasia <- fgseaLabel(gsets_dysplasia, assays(se.filt)$logCPM, histology_integers_dysplasia,10000, minSize=5, maxSize=300)
-head(gseapermpheno_dysplasia[order(gseapermpheno_dysplasia$pval)])
-
-```
-
-We prepare a ranked list of genes based on their differential expression statistics (tt_dysplasia$t).
-We then use the fgsea function to perform GSEA on this ranked list.
-
-``` {r}
-stats_dysplasia <- tt_dysplasia$t
-names(stats_dysplasia) <- rownames(tt_dysplasia)
-gseapermgsets_dysplasia <- fgsea(gsets_dysplasia, stats_dysplasia, minSize=5, maxSize=300)
-head(gseapermgsets_dysplasia[order(gseapermgsets_dysplasia$pval), ])
-```
-```{r}
-gseapermpheno_dysplasia[gseapermpheno_dysplasia$padj < 0.01, ]
-gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
-
-```
-```{r}
-
-
-significant_pathways_gsets_dysplasia <- gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
-significant_pathways_gsets_ordered_dysplasia <- significant_pathways_gsets_dysplasia[order(significant_pathways_gsets_dysplasia$padj), ]
-head(significant_pathways_gsets_ordered_dysplasia, n = 10)
-
-
-```
-
-We create histograms of p-values from both GSEA methods (permuting phenotypes and permuting gene sets) to visualize the distribution of p-values.
-We also generate an enrichment plot for the custom gene set DE_FC_DYS to show the enrichment score across the ranked gene list.
-
-```{r}
-par(mfrow=c(1, 2))
-hist(gseapermpheno_dysplasia$pval, xlab="P-value", main="Permuting phenotypes", las=1)
-hist(gseapermgsets_dysplasia$pval, xlab="P-value", main="Permuting gene sets", las=1)
-plotEnrichment(gsets_dysplasia$DE_FC_DYS, stats_dysplasia)
-
-```
-
-We use this part of the code to identify pathways that are significantly enriched (adjusted p-value < 0.01). The plotGseaTable function then generates a table and plot of GSEA results for these significant pathways, showing the enrichment scores and p-values. This helps us visualize and interpret the most relevant pathways in our dysplasia analysis.
-
-```{r}
-DEpwys_dysplasia <- significant_pathways_gsets_ordered_dysplasia$pathway
-plotGseaTable(gsets_dysplasia[DEpwys_dysplasia], stats_dysplasia, gseapermgsets_dysplasia, gseaParam=0.5)
-
-
-```
-
+The second part of the functional analysis involves performing Gene Set Enrichment Analysis (GSEA), a computational method used to determine if predefined sets of genes show statistically significant and concordant differences between two biological states (e.g., phenotypes). In our study, we will conduct GSEA for two comparisons: identifying pathways significantly enriched between current and former smokers and between the presence and absence of premalignant lesions (PMLs).
 
 ### GSEA for Smoking status 
 
-We do the same steps as previously but now for the smoking status.
-Load the required libraries and data.
+We load the necessary libraries: fgsea for GSEA, GSVAdata for gene set data, and GSEABase for gene set collection handling. We load the c2BroadSets dataset, which contains gene sets from KEGG, REACTOME, and BIOCARTA pathways. 
+
 
 ```{r}
 library(fgsea)
@@ -1406,7 +1316,7 @@ c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),
 c2BroadSets
 ```
 
-Create a costum gene set for Smoking status.
+We create a custom gene set (de_fc_smokerGS) using the Entrez IDs of differentially expressed genes in smoking status. We then combine this custom gene set with the previously filtered gene sets into a single Gene Set Collection (gsc).
 
 ```{r}
 de_fc_smokerGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_smoker$EntrezID, setName="DE_FC_SMOKER")
@@ -1415,7 +1325,7 @@ gsc_smoker <- GeneSetCollection(c(c2BroadSets, de_fc_smokerGS))
 gsets_smoker <- geneIds(gsc_smoker)
 ```
 
-Prepare the data. 
+We prepare the data by converting the histology information into factors and then into integers.
 
 ```{r}
 histology_factors_smoker <- factor(se.filt$smoker)
@@ -1426,20 +1336,20 @@ histology_integers_smoker
 
 ```
 
-Run the GSEA by permuting phenotypes.
+We use the fgseaLabel function to perform GSEA by permuting phenotypes 10,000 times to compute enrichment scores and p-values for each gene set.
 ```{r}
 gseapermpheno_smoker <- fgseaLabel(gsets_smoker, assays(se.filt)$logCPM, histology_integers_smoker,10000, minSize=5, maxSize=300)
 head(gseapermpheno_smoker[order(gseapermpheno_smoker$pval), ])
 ```
 
-Run GSEA with the ranked gene list.
+We prepare a ranked list of genes based on their differential expression statistics (tt_smoker$t).
+We then use the fgsea function to perform GSEA on this ranked list.
 ``` {r}
 stats_smoker <- tt_smoker$t
 names(stats_smoker) <- rownames(tt_smoker)
 gseapermgsets_smoker <- fgsea(gsets_smoker, stats_smoker, minSize=5, maxSize=300)
 head(gseapermgsets_smoker[order(gseapermgsets_smoker$pval), ])
 ```
-
 
 ```{r}
 gseapermpheno_smoker[gseapermpheno_smoker$padj < 0.01, ]
@@ -1453,7 +1363,9 @@ head(significant_pathways_gsets_ordered_smoker, n = 10)
 
 ```
 
-Visualize GSEA results.
+We create histograms of p-values from both GSEA methods (permuting phenotypes and permuting gene sets) to visualize the distribution of p-values.
+We also generate an enrichment plot for the custom gene set DE_FC_SMOKER to show the enrichment score across the ranked gene list.
+
 ```{r}
 par(mfrow=c(1, 2))
 hist(gseapermpheno_smoker$pval, xlab="P-value", main="Permuting phenotypes", las=1)
@@ -1462,13 +1374,103 @@ plotEnrichment(gsets_smoker$DE_FC_SMOKER, stats_smoker)
 
 ```
 
-Identify significant pathways.
+We use this part of the code to identify pathways that are significantly enriched (adjusted p-value < 0.01). The plotGseaTable function then generates a table and plot of GSEA results for these significant pathways, showing the enrichment scores and p-values. This helps us visualize and interpret the most relevant pathways in our smoking status analysis.
+
 
 ```{r}
 DEpwys <- gseapermgsets_smoker$pathway[gseapermgsets_smoker$padj < 0.01]
 plotGseaTable(gsets_smoker[DEpwys], stats_smoker, gseapermgsets_smoker, gseaParam=0.5)
 
 ```
+
+
+
+### GSEA for Dysplasia (PML)
+
+We do the same steps as previously but now for the Dysplasia.
+Load the required libraries and data.
+```{r}
+library(fgsea)
+library(GSVAdata)
+library(GSEABase)
+data(c2BroadSets)
+
+c2BroadSets <- c2BroadSets[c(grep("^KEGG", names(c2BroadSets)),
+  +                              grep("^REACTOME", names(c2BroadSets)),
+  +                              grep("^BIOCARTA", names(c2BroadSets)))]
+c2BroadSets
+
+```
+
+Create a costum gene set for Dysplasia.
+
+```{r}
+de_fc_dysplasiaGS <- GeneSet(EntrezIdentifier("org.Hs.eg.db"), geneIds=de_fc_dysplasia$EntrezID, setName="DE_FC_DYS")
+details(de_fc_dysplasiaGS)
+gsc_dysplasia <- GeneSetCollection(c(c2BroadSets, de_fc_dysplasiaGS))
+gsets_dysplasia <- geneIds(gsc_dysplasia)
+```
+
+Prepare the data.
+```{r}
+
+
+histology_factors_dysplasia <- factor(se.filt$dysplasia)
+histology_integers_dysplasia <- as.integer(histology_factors_dysplasia)
+
+levels(histology_factors_dysplasia)
+histology_integers_dysplasia
+```
+
+
+Run the GSEA by permuting phenotypes.
+```{r}
+
+gseapermpheno_dysplasia <- fgseaLabel(gsets_dysplasia, assays(se.filt)$logCPM, histology_integers_dysplasia,10000, minSize=5, maxSize=300)
+head(gseapermpheno_dysplasia[order(gseapermpheno_dysplasia$pval)])
+
+```
+
+Run GSEA with the ranked gene list.
+
+``` {r}
+stats_dysplasia <- tt_dysplasia$t
+names(stats_dysplasia) <- rownames(tt_dysplasia)
+gseapermgsets_dysplasia <- fgsea(gsets_dysplasia, stats_dysplasia, minSize=5, maxSize=300)
+head(gseapermgsets_dysplasia[order(gseapermgsets_dysplasia$pval), ])
+```
+
+```{r}
+gseapermpheno_dysplasia[gseapermpheno_dysplasia$padj < 0.01, ]
+gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
+
+```
+
+```{r}
+significant_pathways_gsets_dysplasia <- gseapermgsets_dysplasia[gseapermgsets_dysplasia$padj < 0.01, ]
+significant_pathways_gsets_ordered_dysplasia <- significant_pathways_gsets_dysplasia[order(significant_pathways_gsets_dysplasia$padj), ]
+head(significant_pathways_gsets_ordered_dysplasia, n = 10)
+
+```
+
+Create histograms of p-values and generate an enrichment plot.
+```{r}
+par(mfrow=c(1, 2))
+hist(gseapermpheno_dysplasia$pval, xlab="P-value", main="Permuting phenotypes", las=1)
+hist(gseapermgsets_dysplasia$pval, xlab="P-value", main="Permuting gene sets", las=1)
+plotEnrichment(gsets_dysplasia$DE_FC_DYS, stats_dysplasia)
+
+```
+
+Identify significant pathways. 
+
+```{r}
+DEpwys_dysplasia <- significant_pathways_gsets_ordered_dysplasia$pathway
+plotGseaTable(gsets_dysplasia[DEpwys_dysplasia], stats_dysplasia, gseapermgsets_dysplasia, gseaParam=0.5)
+
+
+```
+
 
 
 ## Go Ontology
@@ -1580,13 +1582,13 @@ As we suspected during EDA and Experimental Design, the results from our Differe
 
 In our analysis, we aimed to explore the effects of smoking on cellular functions using Gene Set Enrichment Analysis (GSEA) and Gene Ontology (GO) analysis. We conducted these analyses on samples with dysplasia versus no dysplasia and current smokers versus former smokers.
 
-Both GSEA and GO analysis in our sets of DE genes (dysplasia vs no dysplasia and current vs former smoker) revealed that smoking significantly impacts various cellular pathways, particularly those related to ribosomal function, protein synthesis, mitochondrial function, and metabolic processes (REACTOME_TRANSLATION, REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT, and REACTOME_FORMATION_OF_A_POOL_OF_FREE_40S_SUBUNITS). This illustrates that chronic exposure to cigarette smoke can lead to oxidative stress, damaging cellular components and disrupting normal protein synthesis and function.
+Both GSEA and GO analysis in our sets of DE genes (dysplasia vs no dysplasia and current vs former smoker) revealed that smoking significantly impacts various cellular pathways, particularly those related to ribosomal function, protein synthesis, mitochondrial function, and metabolic processes (REACTOME_TRANSLATION, REACTOME_GTP_HYDROLYSIS_AND_JOINING_OF_THE_60S_RIBOSOMAL_SUBUNIT and REACTOME_FORMATION_OF_A_POOL_OF_FREE_40S_SUBUNITS). This illustrates that chronic exposure to cigarette smoke can lead to oxidative stress, damaging cellular components and disrupting normal protein synthesis and function.
 
-Smoking affects the expression and function of ribosomal proteins, which are critical for protein biogenesis. Our findings align with the study by Park et al. (2021) published in Scientific Reports, which also identified a detrimental effect of smoking on ribosomal function and protein synthesis. Exposure to electronic cigarette smoke reduces ribosomal protein gene expression, impairing protein synthesis in primary human airway epithelial cells. The reduced expression of ribosomal proteins and subsequent impairment in protein synthesis could lead to various cellular dysfunctions and contribute to the pathogenesis of various smoking-related diseases, including cancer. 
+Smoking affects the expression and function of ribosomal proteins, which are critical for protein biogenesis (KEGG_RIBOSOME). Our findings align with the study by @Park21, which also identified a detrimental effect of smoking on ribosomal function and protein synthesis. Exposure to electronic cigarette smoke reduces ribosomal protein gene expression, impairing protein synthesis in primary human airway epithelial cells. The reduced expression of ribosomal proteins and subsequent impairment in protein synthesis could lead to various cellular dysfunctions and contribute to the pathogenesis of various smoking-related diseases, including cancer. 
 
-Further findings indicate that smoking disrupts cytoplasmic translation and peptide chain elongation. The study by Merzah et al. (2023) supports these observations, revealing differentially expressed genes (DEGs) related to immune response and inflammation pathways in smokers. Smoking leads to significant downregulation of genes involved in oxygen binding and activity, emphasizing the role of oxidative stress in disrupting cellular functions, contributing to disease development.
+Further findings indicate that smoking disrupts cytoplasmic translation and peptide chain elongation (REACTOME_PEPTIDE_CHAIN_ELONGATION). The study by @Merzah23 supports these observations, revealing differentially expressed genes (DEGs) related to immune response and inflammation pathways in smokers. Smoking leads to significant downregulation of genes involved in oxygen binding and activity, emphasizing the role of oxidative stress in disrupting cellular functions, contributing to disease development.
 
-Additionally, our analyses identified pathways related to mitochondrial electron transport and ATP synthesis ((KEGG_OXIDATIVE_PHOSPHORYLATION). Smoking introduces numerous toxins that induce oxidative stress, resulting in the production of reactive oxygen species (ROS), which can damage cellular components, including mitochondria. This oxidative stress impairs mitochondrial function, leading to a cascade of detrimental effects on cellular health. The study by Kanithi et al. (2022) highlighted the impact of cigarette smoke and e-cigarette vapor on mitochondrial function by increasing oxidative stress, disrupting mitochondrial morphology, and impairing critical processes such as fusion, fission, and mitophagy.
+Additionally, our analyses identified pathways related to mitochondrial electron transport and ATP synthesis (KEGG_OXIDATIVE_PHOSPHORYLATION). Smoking introduces numerous toxins that induce oxidative stress, resulting in the production of reactive oxygen species (ROS), which can damage cellular components, including mitochondria. This oxidative stress impairs mitochondrial function, leading to a cascade of detrimental effects on cellular health. The study by @Kanithi22 highlighted the impact of cigarette smoke and e-cigarette vapor on mitochondrial function by increasing oxidative stress, disrupting mitochondrial morphology, and impairing critical processes such as fusion, fission, and mitophagy.
 
 Smoking-induced oxidative stress damages the electron transport chain, leading to reduced ATP production and impaired cellular energy metabolism. The resulting energy deficit can hinder cellular processes, contributing to the development of diseases such as cancer and cardiovascular conditions. The study by @Tan08 concluded that cigarette smoke exposure affects mtDNA in buccal cells of smokers. Additionally, @Fetterman17 reported that active and passive cigarette smoke decreases mitochondrial respiration and membrane potential, leading to decreased ATP content and increased oxidant production in various tissues, exacerbating cellular dysfunction and contributing to smoking-related diseases.
 
