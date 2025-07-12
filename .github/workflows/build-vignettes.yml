@@ -20,11 +20,6 @@ jobs:
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v1
 
-    - name: Check Pandoc version
-      run: |
-        rmarkdown::find_pandoc()
-      shell: Rscript {0}
-
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -44,34 +39,16 @@ jobs:
           libmagickcore-dev \
           libmagick++-dev
 
-    - name: Install Bioconductor packages
-      run: |
-        install.packages("BiocManager", repos = "https://cran.r-project.org")
-        BiocManager::install(version = "3.20", ask = FALSE)
-        BiocManager::install(c(
-          "SummarizedExperiment", "S4Vectors", "limma", "fgsea",
-          "GSEABase", "GSVAdata", "BiocStyle",
-          "edgeR", "sva", "GOstats", "geneplotter"
-        ), ask = FALSE, update = FALSE)
-      shell: Rscript {0}
-
-    - name: Install CRAN packages
+    - name: Install CRAN packages (including rmarkdown)
       run: |
         install.packages(c("magick", "usethis", "pkgdown", "devtools", "rmarkdown", "msigdbr"), repos = "https://cran.r-project.org")
       shell: Rscript {0}
 
-    - name: Install package with vignettes
-      run: |
-        devtools::install(".", build_vignettes = TRUE, dependencies = TRUE)
+    - name: Check Pandoc version
+      run: rmarkdown::find_pandoc()
       shell: Rscript {0}
 
-    - name: Copy built vignette to deploy directory
+    - name: Install Bioconductor packages
       run: |
-        mkdir -p deploy
-        cp doc/IEOProjectAnalysis.html deploy/index.html
-
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./deploy
+        install.packages("BiocManager", repos = "https://cran.r-project.org")
+        BiocManager::install(v
