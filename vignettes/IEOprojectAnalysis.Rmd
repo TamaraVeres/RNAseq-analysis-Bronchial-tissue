@@ -99,7 +99,7 @@ into the output of the report.
 ```{r, message=FALSE}
 library(SummarizedExperiment)
 
-se <- readRDS("GSE79209.rds")
+se <- readRDS(here("GSE79209.rds"))
 se
 
 ```
