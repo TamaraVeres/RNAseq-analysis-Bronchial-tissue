@@ -99,9 +99,7 @@ into the output of the report.
 ```{r, message=FALSE}
 library(SummarizedExperiment)
 
-se <- readRDS(file.path(system.file("extdata",
-                                    package="IEOproject"),
-                        "GSE79209.rds"))
+se <- readRDS("GSE79209.rds")
 se
 
 ```
