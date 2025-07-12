@@ -24,8 +24,6 @@ jobs:
           libcurl4-openssl-dev \
           libxml2-dev \
           libssl-dev \
-          pandoc \
-          pandoc-citeproc \
           libgit2-dev \
           libharfbuzz-dev \
           libfribidi-dev \

@@ -11,6 +11,7 @@ output:
     toc_float: true
     number_sections: true
     fig_captions: yes
+    citation_package: "default"
 bibliography: bibliography.bib
 vignette: >
   %\VignetteIndexEntry{IEOprojectAnalysis}
