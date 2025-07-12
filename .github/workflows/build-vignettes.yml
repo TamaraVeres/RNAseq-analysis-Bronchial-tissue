@@ -1,8 +1,8 @@
-name: Render and Deploy Vignette
+name: Build and Deploy Vignette
 
 on:
   push:
-    branches: [main]  # Or your default branch
+    branches: [main]  # or your default branch
 
 jobs:
   build-deploy:
@@ -18,20 +18,20 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libssl-dev libharfbuzz-dev libfribidi-dev pandoc
+        sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libssl-dev pandoc
 
-    - name: Install R packages
+    - name: Install R dependencies
       run: |
         install.packages("BiocManager")
-        BiocManager::install(c("BiocStyle", "rmarkdown", "knitr", "here"), ask=FALSE, update=FALSE)
+        BiocManager::install(c("devtools", "rmarkdown", "BiocStyle"), ask = FALSE, update = FALSE)
       shell: Rscript {0}
 
-    - name: Render vignette
+    - name: Install package with vignettes
       run: |
-        rmarkdown::render("doc/IEOProjectAnalysis.Rmd")
+        devtools::install(".", build_vignettes = TRUE, dependencies = TRUE)
       shell: Rscript {0}
 
-    - name: Copy output to deploy dir
+    - name: Copy built vignette to deploy directory
       run: |
         mkdir deploy
         cp doc/IEOProjectAnalysis.html deploy/index.html
