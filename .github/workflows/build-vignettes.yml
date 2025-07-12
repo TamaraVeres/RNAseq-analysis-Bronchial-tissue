@@ -2,7 +2,7 @@ name: Build and Deploy Vignette
 
 on:
   push:
-    branches: [main]  # or your default branch
+    branches: [main]
 
 jobs:
   build-deploy:
@@ -12,18 +12,46 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v3
 
-    - name: Set up R
+    - name: Set up R 4.4.0
       uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: '4.4.0'
 
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libssl-dev pandoc
+        sudo apt-get install -y \
+          libcurl4-openssl-dev \
+          libxml2-dev \
+          libssl-dev \
+          pandoc \
+          pandoc-citeproc \
+          libgit2-dev \
+          libharfbuzz-dev \
+          libfribidi-dev \
+          libfontconfig1-dev \
+          libfreetype6-dev \
+          libpng-dev \
+          libtiff5-dev \
+          libjpeg-dev \
+          libmagickwand-dev \
+          libmagickcore-dev \
+          libmagick++-dev
 
-    - name: Install R dependencies
+    - name: Install Bioconductor packages
       run: |
-        install.packages("BiocManager")
-        BiocManager::install(c("devtools", "rmarkdown", "BiocStyle"), ask = FALSE, update = FALSE)
+        install.packages("BiocManager", repos = "https://cran.r-project.org")
+        BiocManager::install(version = "3.20", ask = FALSE)
+        BiocManager::install(c(
+          "SummarizedExperiment", "S4Vectors", "limma", "fgsea",
+          "GSEABase", "GSVAdata", "BiocStyle",
+          "edgeR", "sva", "GOstats", "geneplotter"
+        ), ask = FALSE, update = FALSE)
+      shell: Rscript {0}
+
+    - name: Install CRAN packages
+      run: |
+        install.packages(c("magick", "usethis", "pkgdown", "devtools", "rmarkdown", "msigdbr"), repos = "https://cran.r-project.org")
       shell: Rscript {0}
 
     - name: Install package with vignettes
@@ -33,7 +61,7 @@ jobs:
 
     - name: Copy built vignette to deploy directory
       run: |
-        mkdir deploy
+        mkdir -p deploy
         cp doc/IEOProjectAnalysis.html deploy/index.html
 
     - name: Deploy to GitHub Pages
