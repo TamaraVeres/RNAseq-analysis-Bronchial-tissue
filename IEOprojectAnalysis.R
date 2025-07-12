@@ -31,10 +31,9 @@ path2pkg <- here()
 
 ## ----message=FALSE------------------------------------------------------------
 library(SummarizedExperiment)
+library(here)
 
-se <- readRDS(file.path(system.file("extdata",
-                                    package="IEOproject"),
-                        "GSE79209.rds"))
+se <- readRDS(here("GSE79209.rds"))
 se
 
 

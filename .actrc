@@ -1,0 +1,2 @@
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+act -s GITHUB_TOKEN=$(cat .secrets | grep GITHUB_TOKEN | cut -d= -f2-)
