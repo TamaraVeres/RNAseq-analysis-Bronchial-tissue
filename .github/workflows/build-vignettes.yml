@@ -28,7 +28,7 @@ jobs:
 
     - name: Render vignette
       run: |
-        rmarkdown::render("doc/IEOProjectAnalysis.rmd")
+        rmarkdown::render("doc/IEOProjectAnalysis.Rmd")
       shell: Rscript {0}
 
     - name: Copy output to deploy dir
