@@ -17,6 +17,14 @@ jobs:
       with:
         r-version: '4.4.0'
 
+    - name: Set up Pandoc
+      uses: r-lib/actions/setup-pandoc@v1
+
+    - name: Check Pandoc version
+      run: |
+        rmarkdown::find_pandoc()
+      shell: Rscript {0}
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
